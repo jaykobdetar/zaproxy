@@ -98,8 +98,10 @@ telemetry, auto-update behavior or marketplace publication are changed.
 Use this isolated checkout; do not modify or resume FE8. Check memory before
 heavy work, run builds serially with one worker and bounded heaps, and pause
 heavy work if host headroom falls below the configured needs. Keep build caches
-local to this task. Local reviewable commits are authorized. Pushing
-implementation, merging, and publishing releases require further user approval.
+local to this task. Local reviewable commits are authorized. The user authorized
+the initial `feature/private-evidence` publication at `efd5ffc` on 2026-10-12.
+The newer `feature/familiar-workspace` UI work remains local. Further pushes,
+merges, and release publication require separate approval.
 
 Use the add-on's README for reproducible commands. Record successful, failed
 and unrun checks separately; a packaged alpha add-on is not a fully validated
@@ -184,9 +186,9 @@ before expanding this alpha workflow. Existing tests and valid evidence are
 preserved; the full upstream suite and normal installation are not claimed as
 passed.
 
-Use [the setup and handoff guide](personal-fork-setup.md) for the local branch,
-artifacts, reproducible bounded checks and the distinction between the remote
-fork and unpushed implementation.
+Use [the setup and handoff guide](personal-fork-setup.md) for the published initial
+checkpoint, artifacts and reproducible bounded checks. The newer unpushed UI
+batch is described in [the workspace guide](personal-fork-workspace.md).
 
 ## Final readiness checkpoint
 

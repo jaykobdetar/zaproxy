@@ -1,9 +1,17 @@
 # Personal ZAP fork — final report
 
 Verified fork: https://github.com/jaykobdetar/zaproxy, owned by the authenticated
-account `jaykobdetar`. Implementation remains local on `feature/private-evidence`.
-The remote fork contains upstream history; no implementation push, PR, merge or
+account `jaykobdetar`. This report preserves the initial implementation's local
+validation evidence. After that validation, the user authorized publication and
+`feature/private-evidence` was pushed at
+**efd5ffc70dca073705a43ab82dacc21b42575c57** on 2026-10-12. The remote SHA was
+verified; no CI runs or check runs were present for that head. No PR, merge or
 release publication occurred. FE8 remained paused and untouched.
+
+The newer UI work is local and unpushed on `feature/familiar-workspace`. Its
+separate scope and results are in [the workspace guide](personal-fork-workspace.md)
+and `qa/workspace/VERIFICATION.md`. The test counts below concern the initial
+implementation, not the later UI batch.
 
 Verified runtime-code commit: **42eb75c0f7b88783182a1324b4bd80866c67e6c3**.
 Upstream base: **38ffe34a1b03fd3241e0bb233c2a083df875ee33**.

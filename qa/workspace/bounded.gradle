@@ -1,0 +1,12 @@
+// Workspace QA only: serial, bounded tests with class isolation for static translation state.
+allprojects {
+    tasks.withType(Test).configureEach {
+        maxHeapSize = '192m'
+        maxParallelForks = 1
+        forkEvery = 1
+        jvmArgs '-XX:ActiveProcessorCount=2', '-Djava.awt.headless=true'
+    }
+    tasks.withType(JavaCompile).configureEach {
+        if (options.fork) options.forkOptions.memoryMaximumSize = '512m'
+    }
+}

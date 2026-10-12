@@ -45,14 +45,17 @@
 // ZAP: 2025/03/19 Make getTabbedFull public.
 package org.parosproxy.paros.view;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Insets;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -127,7 +130,14 @@ public class WorkbenchPanel extends JPanel {
          * <p>Since it already occupies the whole workbench panel the area can not be resized nor
          * maximised.
          */
-        FULL(2);
+        FULL(2),
+
+        /**
+         * Keeps the navigator on the left, with tool and traffic tabs above the message viewers on
+         * the right. Uses the same panels, selection listeners and response positions as the
+         * classic layouts.
+         */
+        TRAFFIC_REVIEW(3);
 
         /** The ID of the layout. */
         private final int id;
@@ -164,6 +174,9 @@ public class WorkbenchPanel extends JPanel {
             }
             if (id == Layout.FULL.getId()) {
                 return Layout.FULL;
+            }
+            if (id == Layout.TRAFFIC_REVIEW.getId()) {
+                return Layout.TRAFFIC_REVIEW;
             }
             return Layout.EXPAND_STATUS;
         }
@@ -240,6 +253,8 @@ public class WorkbenchPanel extends JPanel {
     private static final String PREF_DIVIDER_LOCATION = "divider.location";
     private static final String DIVIDER_VERTICAL = "vertical";
     private static final String DIVIDER_HORIZONTAL = "horizontal";
+    private static final String DIVIDER_REVIEW_TRAFFIC = "review.traffic";
+    private static final String DIVIDER_REVIEW_NAVIGATOR = "review.navigator";
 
     private final Preferences preferences;
     private final String prefnzPrefix = this.getClass().getSimpleName() + ".";
@@ -407,6 +422,8 @@ public class WorkbenchPanel extends JPanel {
                     PanelType.STATUS, new HashSet<>(),
                     PanelType.WORK, new HashSet<>());
 
+    private final Map<TabbedPanel2, Map<String, Object>> reviewTabProperties = new HashMap<>();
+
     /**
      * Constructs a {@code WorkbenchPanel} with the given options and request and response panels.
      *
@@ -512,6 +529,7 @@ public class WorkbenchPanel extends JPanel {
 
         Layout previousLayout = this.layout;
         this.layout = layout;
+        updateReviewTabStyle(layout == Layout.TRAFFIC_REVIEW);
 
         componentMaximiser.unmaximiseComponent();
         removeAll();
@@ -543,11 +561,14 @@ public class WorkbenchPanel extends JPanel {
                 break;
             case EXPAND_SELECT:
             case EXPAND_STATUS:
+            case TRAFFIC_REVIEW:
             default:
                 this.add(
-                        layout == Layout.EXPAND_STATUS
-                                ? createStatusPanelsSplit()
-                                : createSelectPanelsSplit());
+                        layout == Layout.TRAFFIC_REVIEW
+                                ? createTrafficReviewSplit()
+                                : layout == Layout.EXPAND_STATUS
+                                        ? createStatusPanelsSplit()
+                                        : createSelectPanelsSplit());
 
                 if (previousLayout == Layout.FULL) {
                     visiblePanels = getTabbedFull().getVisiblePanels();
@@ -699,6 +720,80 @@ public class WorkbenchPanel extends JPanel {
         splitHoriz.setContinuousLayout(false);
         splitHoriz.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         return splitHoriz;
+    }
+
+    private JSplitPane createTrafficReviewSplit() {
+        JSplitPane trafficAndMessages = createSplitPane(JSplitPane.VERTICAL_SPLIT);
+        trafficAndMessages.setName("reviewTrafficAndMessages");
+        trafficAndMessages
+                .getAccessibleContext()
+                .setAccessibleName(Constant.messages.getString("view.review.trafficAndMessages"));
+        trafficAndMessages.setTopComponent(createReviewRegion(getPaneStatus()));
+        trafficAndMessages.setBottomComponent(createReviewRegion(getPaneWork()));
+        trafficAndMessages.setDividerLocation(
+                restoreDividerLocation(DIVIDER_REVIEW_TRAFFIC, DisplayUtils.getScaledSize(260)));
+        trafficAndMessages.addPropertyChangeListener(
+                JSplitPane.DIVIDER_LOCATION_PROPERTY,
+                new DividerResizedListener(DIVIDER_REVIEW_TRAFFIC));
+        trafficAndMessages.setResizeWeight(0.4D);
+        trafficAndMessages.setOneTouchExpandable(true);
+
+        JSplitPane navigatorAndTraffic = createSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        navigatorAndTraffic.setName("reviewNavigatorAndTraffic");
+        navigatorAndTraffic
+                .getAccessibleContext()
+                .setAccessibleName(Constant.messages.getString("view.review.navigatorAndTraffic"));
+        navigatorAndTraffic.setLeftComponent(createReviewRegion(getPaneSelect()));
+        navigatorAndTraffic.setRightComponent(trafficAndMessages);
+        navigatorAndTraffic.setDividerLocation(
+                restoreDividerLocation(DIVIDER_REVIEW_NAVIGATOR, DisplayUtils.getScaledSize(220)));
+        navigatorAndTraffic.addPropertyChangeListener(
+                JSplitPane.DIVIDER_LOCATION_PROPERTY,
+                new DividerResizedListener(DIVIDER_REVIEW_NAVIGATOR));
+        navigatorAndTraffic.setResizeWeight(0.15D);
+        navigatorAndTraffic.setOneTouchExpandable(true);
+        return navigatorAndTraffic;
+    }
+
+    private static JPanel createReviewRegion(JPanel content) {
+        JPanel region = new JPanel(new BorderLayout());
+        int spacing = DisplayUtils.getScaledSize(6);
+        region.setBorder(BorderFactory.createEmptyBorder(spacing, spacing, spacing, spacing));
+        region.setMinimumSize(DisplayUtils.getScaledDimension(140, 120));
+        region.add(content);
+        return region;
+    }
+
+    private void updateReviewTabStyle(boolean review) {
+        Map<String, Object> properties =
+                Map.of(
+                        FlatClientProperties.TABBED_PANE_TAB_HEIGHT,
+                        34,
+                        FlatClientProperties.TABBED_PANE_TAB_INSETS,
+                        new Insets(5, 10, 5, 10),
+                        FlatClientProperties.TABBED_PANE_SHOW_TAB_SEPARATORS,
+                        true);
+        for (TabbedPanel2 tabs :
+                List.of(
+                        getTabbedSelect(),
+                        getTabbedStatus(),
+                        getTabbedWork(),
+                        responseTabbedPanel)) {
+            if (review) {
+                Map<String, Object> original = new HashMap<>();
+                properties.forEach(
+                        (key, value) -> {
+                            original.put(key, tabs.getClientProperty(key));
+                            tabs.putClientProperty(key, value);
+                        });
+                reviewTabProperties.put(tabs, original);
+            } else {
+                Map<String, Object> original = reviewTabProperties.remove(tabs);
+                if (original != null) {
+                    original.forEach(tabs::putClientProperty);
+                }
+            }
+        }
     }
 
     /**

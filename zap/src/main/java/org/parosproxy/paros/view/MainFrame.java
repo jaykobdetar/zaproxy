@@ -41,6 +41,7 @@
 // ZAP: 2024/10/07 Add stats to main toolbar buttons (Issue 8375).
 package org.parosproxy.paros.view;
 
+import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -215,6 +216,8 @@ public class MainFrame extends AbstractFrame {
 
     private PopupButton lookAndFeelButton;
 
+    private JToggleButton trafficReviewLayoutButton;
+
     /**
      * Constructs a {@code MainFrame} with the given options and request and response panels.
      *
@@ -347,6 +350,14 @@ public class MainFrame extends AbstractFrame {
             layoutsButtonGroup.add(getExpandStatusLayoutButton());
             mainToolbarPanel.addButton(getFullLayoutButton());
             layoutsButtonGroup.add(getFullLayoutButton());
+            // Keep the labeled preset keyboard-focusable through look-and-feel updates. FlatLaf
+            // makes direct toolbar buttons non-focusable when reinstalling the toolbar UI.
+            JPanel reviewLayoutControl = new JPanel(new BorderLayout());
+            reviewLayoutControl.setOpaque(false);
+            reviewLayoutControl.add(getTrafficReviewLayoutButton());
+            mainToolbarPanel.addToolBarComponent(reviewLayoutControl);
+            getTrafficReviewLayoutButton().setFocusable(true);
+            layoutsButtonGroup.add(getTrafficReviewLayoutButton());
             mainToolbarPanel.addSeparator();
 
             ButtonGroup responsePanelPositionsButtonGroup = new ButtonGroup();
@@ -492,6 +503,29 @@ public class MainFrame extends AbstractFrame {
             fullLayoutButton.setToolTipText(Constant.messages.getString("view.toolbar.expandFull"));
         }
         return fullLayoutButton;
+    }
+
+    private JToggleButton getTrafficReviewLayoutButton() {
+        if (trafficReviewLayoutButton == null) {
+            trafficReviewLayoutButton =
+                    new JToggleButton(Constant.messages.getString("view.toolbar.trafficReview"));
+            trafficReviewLayoutButton.setName("trafficReviewLayout");
+            trafficReviewLayoutButton.setToolTipText(
+                    Constant.messages.getString("view.toolbar.trafficReview.tooltip"));
+            trafficReviewLayoutButton
+                    .getAccessibleContext()
+                    .setAccessibleName(Constant.messages.getString("view.toolbar.trafficReview"));
+            trafficReviewLayoutButton.addActionListener(
+                    e -> {
+                        setWorkbenchLayout(WorkbenchPanel.Layout.TRAFFIC_REVIEW);
+                        setResponsePanelPosition(
+                                WorkbenchPanel.ResponsePanelPosition.PANELS_SIDE_BY_SIDE);
+                        setShowTabNames(true);
+                        options.getViewParam().setShowTabNames(true);
+                        Stats.incCounter("stats.ui.maintoolbar.button.layout.TRAFFIC_REVIEW");
+                    });
+        }
+        return trafficReviewLayoutButton;
     }
 
     private ZapToggleButton getTabsResponsePanelPositionButton() {
@@ -659,6 +693,10 @@ public class MainFrame extends AbstractFrame {
         workbenchLayout = layout;
 
         switch (workbenchLayout) {
+            case TRAFFIC_REVIEW:
+                getTrafficReviewLayoutButton().setSelected(true);
+                setResponsePanelPositionButtonsEnabled(true);
+                break;
             case EXPAND_STATUS:
                 getExpandStatusLayoutButton().setSelected(true);
                 setResponsePanelPositionButtonsEnabled(true);

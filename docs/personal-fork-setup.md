@@ -1,15 +1,19 @@
 # Personal fork setup and handoff
 
 The verified fork is https://github.com/jaykobdetar/zaproxy, owned by the
-authenticated GitHub account `jaykobdetar`. Local implementation is in
-`/home/jaykob/Documents/Codex/2026-10-12/task/zaproxy`, on
-`feature/private-evidence`, based on upstream commit
+authenticated GitHub account `jaykobdetar`. The checkout is in
+`/home/jaykob/Documents/Codex/2026-10-12/task/zaproxy`. The reviewed implementation
+was developed on `feature/private-evidence`, based on upstream commit
 `38ffe34a1b03fd3241e0bb233c2a083df875ee33`.
 
-The remote fork contains upstream history. The implementation commits remain
-local; cloning the remote alone will not retrieve them. Inspect the local branch
-or the supplied patch. No implementation push, PR, merge or release occurred.
-FE8's checkout and paused work were left untouched.
+The user subsequently authorized publication. The remote `feature/private-evidence`
+branch now contains the initial implementation at
+`efd5ffc70dca073705a43ab82dacc21b42575c57`; cloning that branch retrieves it.
+No PR, merge or release publication occurred. The newer UI batch is local and
+unpushed on `feature/familiar-workspace`; see
+[its separate workspace guide](personal-fork-workspace.md). The packages and
+validation described below concern the initial implementation. FE8's checkout
+and paused work were left untouched.
 
 ## What to try
 

@@ -532,6 +532,7 @@ public class OptionsViewPanel extends AbstractParamPanel {
             displaySelect.addItem(Constant.messages.getString("view.options.label.display.left"));
             displaySelect.addItem(Constant.messages.getString("view.options.label.display.bottom"));
             displaySelect.addItem(Constant.messages.getString("view.options.label.display.full"));
+            displaySelect.addItem(Constant.messages.getString("view.options.label.display.review"));
         }
         return displaySelect;
     }
