@@ -263,6 +263,7 @@ public class ExtensionSearch extends ExtensionAdaptor {
             int maxOccurrences) {
         if (setToolbar) {
             this.getSearchPanel().searchFocus();
+            this.getSearchPanel().setLiteralSearch(false);
             this.getSearchPanel().getRegExField().setText(filter);
             this.getSearchPanel().setSearchType(reqType);
         }

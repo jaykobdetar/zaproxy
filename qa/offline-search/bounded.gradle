@@ -1,0 +1,20 @@
+// QA-only Gradle init script; no changes to upstream tasks outside resource bounds.
+allprojects {
+    tasks.withType(Test).configureEach {
+        maxHeapSize = '192m'
+        maxParallelForks = 1
+        jvmArgs '-XX:ActiveProcessorCount=2', '-Djava.awt.headless=true'
+    }
+    tasks.withType(JavaCompile).configureEach {
+        if (options.fork) options.forkOptions.memoryMaximumSize = '512m'
+    }
+}
+gradle.projectsEvaluated {
+    def qaProject = rootProject.findProject(':zap')
+    if (qaProject != null) {
+        qaProject.tasks.register('offlineSearchQaDependencies', Copy) {
+            from qaProject.configurations.runtimeClasspath
+            into qaProject.layout.buildDirectory.dir('offlineSearchQa/lib')
+        }
+    }
+}

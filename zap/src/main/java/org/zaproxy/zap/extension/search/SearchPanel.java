@@ -65,6 +65,7 @@ public class SearchPanel extends AbstractPanel implements SearchListenner {
 
     private javax.swing.JPanel panelCommand = null;
     private javax.swing.JToolBar panelToolbar = null;
+    private javax.swing.JToolBar resultsToolbar;
     private JScrollPane jScrollPane = null;
 
     private ZapToggleButton scopeButton = null;
@@ -74,6 +75,7 @@ public class SearchPanel extends AbstractPanel implements SearchListenner {
     private JButton btnNext = null;
     private JButton btnPrev = null;
     private JCheckBox chkInverse = null;
+    private JCheckBox literalSearch;
     private JLabel numberOfMatchesLabel;
     private JLabel searchStatusLabel;
     private JButton optionsButton;
@@ -171,6 +173,12 @@ public class SearchPanel extends AbstractPanel implements SearchListenner {
 
             panelCommand.add(this.getPanelToolbar(), gridBagConstraints1);
             panelCommand.add(getJScrollPane(), gridBagConstraints2);
+            GridBagConstraints resultsConstraints = new GridBagConstraints();
+            resultsConstraints.gridx = 0;
+            resultsConstraints.gridy = 2;
+            resultsConstraints.weightx = 1.0;
+            resultsConstraints.fill = GridBagConstraints.HORIZONTAL;
+            panelCommand.add(getResultsToolbar(), resultsConstraints);
         }
         return panelCommand;
     }
@@ -195,45 +203,50 @@ public class SearchPanel extends AbstractPanel implements SearchListenner {
             panelToolbar.setPreferredSize(new java.awt.Dimension(800, 30));
             panelToolbar.setName("Search Toolbar");
 
-            GridBagConstraints gridBagConstraintsX = new GridBagConstraints();
-            gridBagConstraintsX.gridx = 20;
-            gridBagConstraintsX.gridy = 0;
-            gridBagConstraintsX.weightx = 1.0;
-            gridBagConstraintsX.weighty = 1.0;
-            gridBagConstraintsX.insets = new java.awt.Insets(0, 0, 0, 0);
-            gridBagConstraintsX.anchor = java.awt.GridBagConstraints.EAST;
-            gridBagConstraintsX.fill = java.awt.GridBagConstraints.HORIZONTAL;
-
-            GridBagConstraints optionsGridBag = new GridBagConstraints();
-            optionsGridBag.gridx = gridBagConstraintsX.gridx + 1;
-            optionsGridBag.gridy = 0;
-            optionsGridBag.insets = new java.awt.Insets(0, 0, 0, 0);
-            optionsGridBag.anchor = java.awt.GridBagConstraints.EAST;
-
-            JLabel t1 = new JLabel();
             JLabel inverseTooltip =
                     new JLabel(Constant.messages.getString("search.toolbar.label.inverse"));
             inverseTooltip.setToolTipText(
                     Constant.messages.getString("search.toolbar.tooltip.inverse"));
+            inverseTooltip.setLabelFor(getChkInverse());
 
             panelToolbar.add(getScopeButton(), newGBC(0));
             panelToolbar.add(getRegExField(), newGBC(1));
-            panelToolbar.add(getSearchType(), newGBC(2));
-            panelToolbar.add(inverseTooltip, newGBC(3));
-            panelToolbar.add(getChkInverse(), newGBC(4));
-            panelToolbar.add(getBtnSearch(), newGBC(5));
-            panelToolbar.add(getBtnNext(), newGBC(6));
-            panelToolbar.add(getBtnPrev(), newGBC(7));
-            panelToolbar.add(new JToolBar.Separator(), newGBC(8));
-            panelToolbar.add(getNumberOfMatchesLabel(), newGBC(9));
-            panelToolbar.add(new JToolBar.Separator(), newGBC(10));
-            panelToolbar.add(getSearchStatusLabel(), newGBC(11));
-            panelToolbar.add(new JToolBar.Separator(), newGBC(12));
-            panelToolbar.add(t1, gridBagConstraintsX);
-            panelToolbar.add(getExportButton(), newGBC(13));
-            panelToolbar.add(getOptionsButton(), optionsGridBag);
+            panelToolbar.add(getLiteralSearch(), newGBC(2));
+            // Some toolbar look and feels disable focus when adding buttons.
+            getLiteralSearch().setFocusable(true);
+            panelToolbar.add(getSearchType(), newGBC(3));
+            panelToolbar.add(inverseTooltip, newGBC(4));
+            panelToolbar.add(getChkInverse(), newGBC(5));
+            panelToolbar.add(getBtnSearch(), newGBC(6));
+            GridBagConstraints stretch = newGBC(7);
+            stretch.weightx = 1.0;
+            stretch.fill = GridBagConstraints.HORIZONTAL;
+            panelToolbar.add(new JLabel(), stretch);
         }
         return panelToolbar;
+    }
+
+    private JToolBar getResultsToolbar() {
+        if (resultsToolbar == null) {
+            resultsToolbar = new JToolBar();
+            resultsToolbar.setLayout(new java.awt.GridBagLayout());
+            resultsToolbar.setFloatable(false);
+            resultsToolbar.setRollover(true);
+            resultsToolbar.setName("Search Results Toolbar");
+            resultsToolbar.add(getBtnNext(), newGBC(0));
+            resultsToolbar.add(getBtnPrev(), newGBC(1));
+            resultsToolbar.add(new JToolBar.Separator(), newGBC(2));
+            resultsToolbar.add(getNumberOfMatchesLabel(), newGBC(3));
+            resultsToolbar.add(new JToolBar.Separator(), newGBC(4));
+            resultsToolbar.add(getSearchStatusLabel(), newGBC(5));
+            GridBagConstraints stretch = newGBC(6);
+            stretch.weightx = 1.0;
+            stretch.fill = GridBagConstraints.HORIZONTAL;
+            resultsToolbar.add(new JLabel(), stretch);
+            resultsToolbar.add(getExportButton(), newGBC(7));
+            resultsToolbar.add(getOptionsButton(), newGBC(8));
+        }
+        return resultsToolbar;
     }
 
     private JToggleButton getScopeButton() {
@@ -270,6 +283,38 @@ public class SearchPanel extends AbstractPanel implements SearchListenner {
                     Constant.messages.getString("search.toolbar.tooltip.inverse"));
         }
         return chkInverse;
+    }
+
+    private JCheckBox getLiteralSearch() {
+        if (literalSearch == null) {
+            literalSearch =
+                    new JCheckBox(Constant.messages.getString("search.toolbar.label.literal"));
+            literalSearch.setToolTipText(
+                    Constant.messages.getString("search.toolbar.tooltip.literal"));
+            literalSearch.addActionListener(e -> updateQueryPrompt());
+        }
+        return literalSearch;
+    }
+
+    void setLiteralSearch(boolean literal) {
+        getLiteralSearch().setSelected(literal);
+        updateQueryPrompt();
+    }
+
+    private void updateQueryPrompt() {
+        boolean literal = getLiteralSearch().isSelected();
+        getRegExField()
+                .setPrompt(
+                        Constant.messages.getString(
+                                literal
+                                        ? "search.toolbar.prompt.literal"
+                                        : "search.toolbar.prompt.regex"));
+        getRegExField()
+                .setToolTipText(
+                        Constant.messages.getString(
+                                literal
+                                        ? "search.toolbar.tooltip.literal"
+                                        : "search.toolbar.tooltip.regex"));
     }
 
     private JButton getBtnSearch() {
@@ -350,6 +395,9 @@ public class SearchPanel extends AbstractPanel implements SearchListenner {
             regEx.setText("");
             regEx.setPrompt(Constant.messages.getString("search.toolbar.prompt.regex"));
             regEx.setToolTipText(Constant.messages.getString("search.toolbar.tooltip.regex"));
+            regEx.getAccessibleContext()
+                    .setAccessibleName(
+                            Constant.messages.getString("search.toolbar.accessible.query"));
             regEx.setMinimumSize(DisplayUtils.getScaledDimension(250, 25));
 
             regEx.addActionListener(
@@ -456,9 +504,17 @@ public class SearchPanel extends AbstractPanel implements SearchListenner {
     }
 
     private void doSearch() {
+        String query = regEx.getText();
+        if (getLiteralSearch().isSelected() && query.isEmpty()) {
+            regEx.requestFocusInWindow();
+            view.showWarningDialog(
+                    Constant.messages.getString("search.toolbar.error.empty.literal"));
+            return;
+        }
+        String expression = getLiteralSearch().isSelected() ? Pattern.quote(query) : query;
         Pattern pattern;
         try {
-            pattern = Pattern.compile(regEx.getText());
+            pattern = Pattern.compile(expression);
         } catch (IllegalArgumentException e) {
             regEx.requestFocusInWindow();
             View.getSingleton()
@@ -503,7 +559,7 @@ public class SearchPanel extends AbstractPanel implements SearchListenner {
         }
 
         setNumberOfMatches(0);
-        extension.search(regEx.getText(), type, customSearcherName, false, chkInverse.isSelected());
+        extension.search(expression, type, customSearcherName, false, chkInverse.isSelected());
 
         // Select first result
         if (resultsTable.getModel().getRowCount() > 0) {
