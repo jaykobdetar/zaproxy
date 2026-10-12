@@ -321,8 +321,14 @@ public class GuiBootstrap extends ZapBootstrap {
 
         try {
             // Allow extensions to pick up command line args in GUI mode
-            control.getExtensionLoader().hookCommandLineListener(getArgs());
-            control.runCommandLine();
+            // The personal offline-review launcher opts out: Network starts its listeners here.
+            // This process-only property leaves ordinary upstream launches unchanged.
+            if (Boolean.getBoolean("org.zaproxy.zap.personal.offline")) {
+                LOGGER.info("Personal offline review: extension command-line startup skipped.");
+            } else {
+                control.getExtensionLoader().hookCommandLineListener(getArgs());
+                control.runCommandLine();
+            }
 
         } catch (final Exception e) {
             LOGGER.error(e.getMessage(), e);

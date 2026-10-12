@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 jaykobdetar
+"""Build and launch the personal offline-review variant on Linux."""
+
+import argparse
+import contextlib
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.request
+
+
+ROOT = Path(__file__).resolve().parent
+STATE = ROOT / ".personal-zap"
+REQUIRED_ADDONS = ("callhome", "commonlib", "network")
+BUILD_JVM = "-Xmx1g -XX:MaxMetaspaceSize=384m -XX:ActiveProcessorCount=2"
+SAFE_CONFIG = (
+    "view.mode=safe",
+    "api.enabled=false",
+    "start.checkForUpdates=false",
+    "start.checkAddonUpdates=false",
+    "start.installAddonUpdates=false",
+)
+
+
+class LauncherError(Exception):
+    pass
+
+
+def digest(path):
+    value = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            value.update(block)
+    return value.hexdigest()
+
+
+def java_environment():
+    env = os.environ.copy()
+    for name in ("JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS"):
+        env.pop(name, None)
+    if env.get("JAVA_HOME"):
+        jdk = Path(env["JAVA_HOME"]).expanduser().resolve()
+    else:
+        java = shutil.which("java")
+        if not java:
+            raise LauncherError("Java is missing. Install a full JDK 17+ or set JAVA_HOME.")
+        jdk = Path(java).resolve().parent.parent
+    for tool in ("java", "javac"):
+        executable = jdk / "bin" / tool
+        if not executable.is_file() or not os.access(executable, os.X_OK):
+            raise LauncherError("JAVA_HOME must point to a full JDK 17+ with java and javac.")
+        result = subprocess.run(
+            [str(executable), "-version"], env=env, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+        )
+        version = re.search(r'(?:version\s+"|javac\s+)(\d+)', result.stdout)
+        if result.returncode or not version or int(version[1]) < 17:
+            raise LauncherError("A full JDK 17+ is required; check JAVA_HOME.")
+    env["JAVA_HOME"] = str(jdk)
+    env["PATH"] = str(jdk / "bin") + os.pathsep + env.get("PATH", "")
+    return env
+
+
+def check_headroom(building):
+    available = re.search(r"^MemAvailable:\s+(\d+)", Path("/proc/meminfo").read_text(), re.M)
+    minimum = 3072 if building else 1024
+    if available and int(available[1]) // 1024 < minimum:
+        raise LauncherError(f"Pause other heavy jobs: at least {minimum} MiB available RAM is required.")
+    # Honour container memory headroom as well as host memory, when constrained.
+    limit, used = Path("/sys/fs/cgroup/memory.max"), Path("/sys/fs/cgroup/memory.current")
+    if limit.is_file() and used.is_file() and limit.read_text().strip() != "max":
+        if (int(limit.read_text()) - int(used.read_text())) // (1024 * 1024) < minimum:
+            raise LauncherError(f"The container needs at least {minimum} MiB memory headroom.")
+    if building and shutil.disk_usage(ROOT).free < 2 * 1024**3:
+        raise LauncherError("At least 2 GiB free disk space is required for the build and cache.")
+
+
+@contextlib.contextmanager
+def locked(path, message):
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with path.open("a") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise LauncherError(message) from None
+        yield handle
+
+
+def pinned_addons():
+    text = (ROOT / "zap/src/main/main-add-ons.yml").read_text()
+    pins = []
+    for addon in REQUIRED_ADDONS:
+        entry = re.search(rf'^- id: "{addon}"\n(.*?)(?=^- id:|\Z)', text, re.M | re.S)
+        url = re.search(r'^  url: "([^"]+)"$', entry[1] if entry else "", re.M)
+        sha = re.search(r'^  hash: "SHA-256:([0-9a-f]{64})"$', entry[1] if entry else "", re.M)
+        if not url or not sha or not re.fullmatch(
+            r"https://github\.com/zaproxy/zap-extensions/releases/download/[^/]+/[^/]+\.zap", url[1]
+        ):
+            raise LauncherError(f"Missing or unsupported official add-on pin: {addon}.")
+        pins.append((url[1], sha[1]))
+    return pins
+
+
+def cached_addon(url, expected, offline):
+    cache = STATE / "downloads"
+    cache.mkdir(parents=True, exist_ok=True)
+    destination = cache / url.rsplit("/", 1)[1]
+    if destination.is_file():
+        if digest(destination) != expected:
+            raise LauncherError(f"Checksum mismatch: {destination}. Preserve/move it aside, then rebuild.")
+        return destination
+    if offline:
+        raise LauncherError(f"Offline cache lacks {destination.name}; run build online once.")
+    print(f"Downloading official {destination.name} ...", flush=True)
+    request = urllib.request.Request(url, headers={"User-Agent": "personal-zap-builder/1"})
+    with tempfile.NamedTemporaryFile(dir=cache, prefix="download-", delete=False) as target:
+        temporary = Path(target.name)
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                total = 0
+                while True:
+                    block = response.read(1024 * 1024)
+                    if not block:
+                        break
+                    total += len(block)
+                    if total > 64 * 1024**2:
+                        raise LauncherError("Official add-on exceeded the 64 MiB download limit.")
+                    target.write(block)
+            target.flush()
+            if digest(temporary) != expected:
+                raise LauncherError(f"Downloaded checksum mismatch for {destination.name}.")
+            temporary.replace(destination)
+        except OSError:
+            raise LauncherError(f"Could not download {destination.name}; check network access and retry build.") from None
+        finally:
+            temporary.unlink(missing_ok=True)
+    return destination
+
+
+def gradle(env, offline, arguments):
+    command = ["bash", str(ROOT / "gradlew"), "--no-daemon", "--max-workers=1", "--no-parallel"]
+    if offline:
+        command.append("--offline")
+    command.extend(arguments)
+    if subprocess.run(command, cwd=ROOT, env=env, check=False).returncode:
+        raise LauncherError("Build failed; earlier runtimes/profiles are preserved. Fix the Gradle error and retry build.")
+
+
+def build(env, offline):
+    check_headroom(True)
+    with locked(STATE / "build.lock", "Another personal build is running; wait for it to finish."):
+        env = env.copy()
+        env.setdefault("GRADLE_USER_HOME", str(STATE / "gradle"))
+        env["GRADLE_USER_HOME"] = str(Path(env["GRADLE_USER_HOME"]).expanduser().resolve())
+        if offline:
+            properties = (ROOT / "gradle/wrapper/gradle-wrapper.properties").read_text()
+            version = re.search(r"/gradle-([0-9.]+)-all\.zip", properties)
+            if not version:
+                raise LauncherError("Unsupported Gradle wrapper distribution; check the builder guide.")
+            wrapper = Path(env["GRADLE_USER_HOME"]).expanduser() / f"wrapper/dists/gradle-{version[1]}-all"
+            if not any(wrapper.glob(f"*/gradle-{version[1]}/bin/gradle")):
+                raise LauncherError("Offline build needs the cached Gradle wrapper; run build online once.")
+        addons = [cached_addon(url, sha, offline) for url, sha in pinned_addons()]
+        print("Building core and Private Evidence serially (one worker) ...", flush=True)
+        gradle(env, offline, [f"-Dorg.gradle.jvmargs={BUILD_JVM}",
+                            "-Pkotlin.compiler.execution.strategy=in-process", ":zap:distFiles"])
+        gradle(env, offline, ["-Dorg.gradle.jvmargs=-Xmx512m -XX:MaxMetaspaceSize=256m -XX:ActiveProcessorCount=2",
+                            "-p", "add-ons/private-evidence", "spotlessCheck", "test", "packageSmokeTest"])
+        packages = list((ROOT / "add-ons/private-evidence/build/zapAddOn/bin").glob("privateevidence-*.zap"))
+        version = re.search(r'^version = "([^"]+)"', (ROOT / "add-ons/private-evidence/build.gradle.kts").read_text(), re.M)
+        packages = [p for p in packages if version and p.name == f"privateevidence-alpha-{version[1]}.zap"]
+        if len(packages) != 1:
+            raise LauncherError("Expected exactly one current Private Evidence package.")
+        builds = STATE / "builds"
+        builds.mkdir(exist_ok=True)
+        destination = Path(tempfile.mkdtemp(prefix="runtime-", dir=builds))
+        shutil.copytree(ROOT / "zap/build/distFiles", destination, dirs_exist_ok=True)
+        if list((destination / "plugin").glob("*.zap")):
+            raise LauncherError("Unexpected add-ons in upstream distFiles; build not activated.")
+        for package in addons + packages:
+            shutil.copy2(package, destination / "plugin" / package.name)
+        for name in ("LICENSE", "LEGALNOTICE.md"):
+            shutil.copy2(ROOT / name, destination / name)
+        files = {str(p.relative_to(destination)): digest(p) for p in sorted(destination.rglob("*")) if p.is_file()}
+        (destination / "BUILD-METADATA.json").write_text(json.dumps({"sha256": files}, indent=2) + "\n")
+        pointer = STATE / "current.tmp"
+        pointer.write_text(destination.name + "\n")
+        pointer.replace(STATE / "current")
+        print(f"Build ready: {destination}\nProfiles and previous builds are preserved.", flush=True)
+
+
+def current_runtime():
+    pointer = STATE / "current"
+    if not pointer.is_file():
+        raise LauncherError("No personal runtime yet. Run ./zap-personal build first.")
+    name = pointer.read_text().strip()
+    if not re.fullmatch(r"runtime-[A-Za-z0-9_-]+", name):
+        raise LauncherError("Invalid runtime pointer; rebuild with ./zap-personal build.")
+    runtime = STATE / "builds" / name
+    metadata = runtime / "BUILD-METADATA.json"
+    if not metadata.is_file():
+        raise LauncherError("Incomplete runtime; rebuild with ./zap-personal build.")
+    try:
+        expected = json.loads(metadata.read_text())["sha256"]
+        actual = {str(p.relative_to(runtime)): digest(p) for p in runtime.rglob("*")
+                  if p.is_file() and p != metadata}
+        if actual != expected or "zap.sh" not in expected:
+            raise LauncherError("Runtime integrity check failed; rebuild before launching.")
+    except (ValueError, KeyError, TypeError):
+        raise LauncherError("Invalid runtime metadata; rebuild before launching.") from None
+    return runtime
+
+
+def launch(env, fresh, name="default"):
+    if not os.environ.get("DISPLAY"):
+        raise LauncherError("No graphical DISPLAY. Run from an Ubuntu desktop with X11/XWayland.")
+    check_headroom(False)
+    runtime = current_runtime()
+    profiles = STATE / "profiles"
+    profiles.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name):
+        raise LauncherError("Profile names must be 1–64 letters, digits, underscores or hyphens, starting with a letter/digit.")
+    profile = Path(tempfile.mkdtemp(prefix="fresh-", dir=profiles)) if fresh else profiles / name
+    with locked(profile / "launcher.lock", "This private profile is already running. Use run --fresh for another.") as lock:
+        for name in ("zap", "home", "prefs"):
+            (profile / name).mkdir(mode=0o700, exist_ok=True)
+        env = env.copy()
+        env["JDK_JAVA_OPTIONS"] = shlex.join([
+            "-XX:ActiveProcessorCount=2", f"-Duser.home={profile / 'home'}",
+            f"-Djava.util.prefs.userRoot={profile / 'prefs'}",
+            "-Dorg.zaproxy.zap.personal.offline=true",
+        ])
+        command = ["bash", str(runtime / "zap.sh"), "-Xmx640m", "-silent", "-dir", str(profile / "zap")]
+        config = list(SAFE_CONFIG)
+        if not (profile / "zap/config.xml").exists():
+            config += ["view.displayOption=3", "view.showTabNames=true",
+                       "view.messagePanelsPosition.lastSelectedPosition=PANELS_SIDE_BY_SIDE",
+                       "database.newsessionprompt=false", "database.newsession=1"]
+        for value in config:
+            command.extend(["-config", value])
+        print(f"Launching Safe mode, API/proxy listeners off.\nPrivate profile: {profile}", flush=True)
+        # Retain the profile lock through the unchanged upstream Bash/Java launcher.
+        os.set_inheritable(lock.fileno(), True)
+        os.execvpe("bash", command, env)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, epilog="See docs/personal-fork-launcher.md for prerequisites and limits.")
+    parser.add_argument("command", choices=("start", "build", "run"), nargs="?", default="start")
+    parser.add_argument("--offline", action="store_true", help="build with cached wrapper, dependencies and official add-ons")
+    profile_options = parser.add_mutually_exclusive_group()
+    profile_options.add_argument("--fresh", action="store_true", help="launch a new private profile; preserve earlier profiles")
+    profile_options.add_argument("--profile", metavar="NAME", help="use a named profile inside this checkout's private profiles")
+    args = parser.parse_args()
+    if args.command == "run" and args.offline:
+        parser.error("run makes no dependency downloads; --offline is a build option")
+    if args.command == "build" and (args.fresh or args.profile):
+        parser.error("--fresh/--profile are launch options")
+    if args.profile and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", args.profile):
+        parser.error("invalid profile name: use 1–64 letters, digits, underscores or hyphens, starting with a letter/digit")
+    if not sys.platform.startswith("linux"):
+        raise LauncherError("This launcher supports Linux/Ubuntu; macOS and Windows remain unverified.")
+    if not shutil.which("bash"):
+        raise LauncherError("Bash is required by the upstream Gradle/ZAP launchers.")
+    if args.command == "start" and not os.environ.get("DISPLAY"):
+        raise LauncherError("No graphical DISPLAY. Use build only, or start from an Ubuntu desktop.")
+    os.umask(0o077)
+    env = java_environment()
+    if args.command in ("start", "build"):
+        build(env, args.offline)
+    if args.command in ("start", "run"):
+        launch(env, args.fresh, args.profile or "default")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (LauncherError, OSError) as error:
+        print(f"zap-personal: {error}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("zap-personal: interrupted; existing data is preserved.", file=sys.stderr)
+        sys.exit(130)

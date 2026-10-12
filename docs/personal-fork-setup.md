@@ -9,13 +9,18 @@ was developed on `feature/private-evidence`, based on upstream commit
 The user subsequently authorized publication. The remote `feature/private-evidence`
 branch now contains the initial implementation at
 `efd5ffc70dca073705a43ab82dacc21b42575c57`; cloning that branch retrieves it.
-No PR, merge or release publication occurred. The newer UI batch is local and
-unpushed on `feature/familiar-workspace`; see
+No PR, merge or release publication occurred. The newer UI batch was subsequently
+published on `feature/familiar-workspace` at
+`beb8888fe67e9f2297e8232963ff6f12b8a8a6d1` on 2026-10-12; see
 [its separate workspace guide](personal-fork-workspace.md). The packages and
 validation described below concern the initial implementation. FE8's checkout
 and paused work were left untouched.
 
 ## What to try
+
+For the current UI branch, use the [builder and launcher](personal-fork-launcher.md).
+The manual artifacts and checks below preserve the initial implementation's
+handoff; the older archive does not contain the newer Traffic review layout.
 
 **Private Evidence 0.1.2** is a standalone alpha add-on for ZAP 2.17.0+.
 The ready local package is
@@ -72,6 +77,12 @@ is needed for offline viewing. The archive includes README-personal.md,
 BUILD-METADATA.json, the upstream license/notice and third-party licenses. The
 standalone `.zap` installs only Private Evidence; core Literal Search requires
 this custom build or a source build.
+
+Later launcher verification found that Network 0.25 forces the main proxy on
+despite the `mainProxy.enabled=false` setting above. The older archive/manual
+command therefore does not guarantee absence of a listener. Prefer the current
+builder/launcher, which opts out of extension command-line startup. Earlier
+desktop verification ran in an isolated network namespace and recorded no traffic.
 
 See [the final verification report](personal-fork-verification.md) for the code
 commit, Java 17/21 check results, exact archive hashes and remaining limits.

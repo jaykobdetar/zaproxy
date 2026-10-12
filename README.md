@@ -23,4 +23,9 @@ It's also a great tool for experienced pentesters to use for manual security tes
 
 For more details about ZAP see the website: [zaproxy.org](https://www.zaproxy.org/)
 
+For this personal fork's offline review workspace, run `./zap-personal` on an
+Ubuntu desktop with Python 3.8+ and a full JDK 17+. See the
+[builder and launcher guide](docs/personal-fork-launcher.md) for build-only,
+cached builds, separate profiles and limitations.
+
 [![](https://raw.githubusercontent.com/wiki/zaproxy/zaproxy/images/zap-website.png)](https://www.zaproxy.org/)

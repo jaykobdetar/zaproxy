@@ -2,10 +2,13 @@
 
 ## First UI batch
 
-This is a local UI branch based on the reviewed Private Evidence implementation:
+This UI branch builds on the reviewed Private Evidence implementation:
 `feature/familiar-workspace`, starting at `efd5ffc70dca073705a43ab82dacc21b42575c57`.
-The previous branch and its published commits are preserved. No UI commits have
-been pushed, merged or published as a release.
+The previous branch and its published commits are preserved. After validation,
+the user authorized pushing the UI work on 2026-10-12. The verified remote head
+was `beb8888fe67e9f2297e8232963ff6f12b8a8a6d1`; no exact-head CI runs or check
+runs were present. No merge or release publication occurred. See the
+[builder/launcher guide](personal-fork-launcher.md) to run this branch.
 
 Choose **Traffic review** in the main toolbar to arrange the existing workspace:
 
@@ -87,8 +90,11 @@ layouts remain available.
 The reproducible GUI harness is in `qa/workspace`. It runs the real core in an
 Xvfb desktop and loopback-only network namespace with an existing disposable QA
 configuration. It creates synthetic records directly in a disposable session;
-no request is sent. API/proxy listeners, telemetry and update checks are disabled
-for the QA process only. Host profiles, proxy settings and CA trust are untouched.
+no request is sent. Safe mode, API suppression and silent/update settings apply
+to the QA process only. The later launcher check found that Network 0.25 ignores
+the old harness's main-proxy enabled setting; those earlier zero-packet records
+do not establish absence of a proxy listener. The new launcher's opt-in startup
+guard is verified separately. Host profiles, proxy settings and CA trust are untouched.
 
 Final results and limitations are recorded in `qa/workspace/VERIFICATION.md`.
 Comparison screenshots show classic and review layouts in the same implementation,

@@ -8,7 +8,9 @@ validation evidence. After that validation, the user authorized publication and
 verified; no CI runs or check runs were present for that head. No PR, merge or
 release publication occurred. FE8 remained paused and untouched.
 
-The newer UI work is local and unpushed on `feature/familiar-workspace`. Its
+The newer UI work was published on `feature/familiar-workspace` at
+`beb8888fe67e9f2297e8232963ff6f12b8a8a6d1` on 2026-10-12 after separate
+validation and authorization; no exact-head CI runs or check runs were present. Its
 separate scope and results are in [the workspace guide](personal-fork-workspace.md)
 and `qa/workspace/VERIFICATION.md`. The test counts below concern the initial
 implementation, not the later UI batch.

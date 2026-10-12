@@ -46,3 +46,7 @@ hs_err_pid*
 # ZAP
 # ---
 *.zap
+
+# Personal builder runtime, dependency cache and private profiles
+/.personal-zap/
+__pycache__/
