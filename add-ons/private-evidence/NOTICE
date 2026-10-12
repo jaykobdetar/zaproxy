@@ -1,0 +1,12 @@
+Private Evidence
+Copyright 2026 jaykobdetar
+
+This original add-on uses public ZAP extension APIs.
+ZAP is maintained by the ZAP Development Team:
+https://www.zaproxy.org/
+https://github.com/zaproxy/zaproxy
+
+The parent project's Apache License 2.0 and existing source attribution remain
+unchanged. ZAP and its third-party dependencies are provided by the host
+application, not bundled in this add-on. No proprietary Burp code or assets
+are included.
