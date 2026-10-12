@@ -19,12 +19,15 @@
  */
 package org.zaproxy.zap.view;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.GridBagConstraints;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -65,27 +68,9 @@ public class MainToolbarPanel extends JPanel {
     }
 
     public void initialise() {
-        setLayout(new java.awt.GridBagLayout());
-        setPreferredSize(DisplayUtils.getScaledDimension(getMaximumSize().width, 25));
-        setMaximumSize(DisplayUtils.getScaledDimension(getMaximumSize().width, 25));
+        setLayout(new BorderLayout());
         this.setBorder(BorderFactory.createEtchedBorder());
-
-        GridBagConstraints gridBagConstraints1 = new GridBagConstraints();
-        GridBagConstraints gridBagConstraints2 = new GridBagConstraints();
-
-        gridBagConstraints1.gridx = 0;
-        gridBagConstraints1.gridy = 0;
-        gridBagConstraints1.anchor = java.awt.GridBagConstraints.WEST;
-
-        gridBagConstraints2.gridx = 1;
-        gridBagConstraints2.gridy = 0;
-        gridBagConstraints2.weightx = 1.0;
-        gridBagConstraints2.weighty = 1.0;
-        gridBagConstraints2.anchor = java.awt.GridBagConstraints.EAST;
-        gridBagConstraints2.fill = java.awt.GridBagConstraints.HORIZONTAL;
-
-        add(getToolbar(), gridBagConstraints1);
-        add(Box.createHorizontalGlue(), gridBagConstraints2);
+        add(getToolbar(), BorderLayout.CENTER);
 
         toolbar.add(getModeSelect());
         toolbar.add(getBtnNew());
@@ -106,8 +91,83 @@ public class MainToolbarPanel extends JPanel {
             toolbar.setRollover(true);
             toolbar.setName("Main Toolbar");
             toolbar.setBorder(BorderFactory.createEmptyBorder());
+            toolbar.setLayout(new WrappingToolbarLayout());
         }
         return toolbar;
+    }
+
+    @Override
+    public Dimension getMaximumSize() {
+        return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+    }
+
+    /** Keeps the original controls and listeners, wrapping whole controls onto extra rows. */
+    private static class WrappingToolbarLayout extends FlowLayout {
+        private static final long serialVersionUID = 1L;
+
+        WrappingToolbarLayout() {
+            super(FlowLayout.LEADING, 0, DisplayUtils.getScaledSize(2));
+        }
+
+        @Override
+        public Dimension minimumLayoutSize(Container target) {
+            synchronized (target.getTreeLock()) {
+                int widest = 0;
+                for (Component child : target.getComponents()) {
+                    if (child.isVisible()) {
+                        widest = Math.max(widest, child.getPreferredSize().width);
+                    }
+                }
+                Insets insets = target.getInsets();
+                return new Dimension(
+                        widest + insets.left + insets.right + 2 * getHgap(),
+                        preferredLayoutSize(target).height);
+            }
+        }
+
+        @Override
+        public Dimension preferredLayoutSize(Container target) {
+            synchronized (target.getTreeLock()) {
+                Container parent = target.getParent();
+                int available =
+                        parent != null && parent.getParent() != null
+                                ? parent.getParent().getWidth()
+                                : target.getWidth();
+                Insets insets = target.getInsets();
+                Insets parentInsets = parent == null ? new Insets(0, 0, 0, 0) : parent.getInsets();
+                int limit =
+                        available > 0
+                                ? available
+                                        - parentInsets.left
+                                        - parentInsets.right
+                                        - insets.left
+                                        - insets.right
+                                        - 2 * getHgap()
+                                : Integer.MAX_VALUE;
+                int rowWidth = 0;
+                int rowHeight = 0;
+                int width = 0;
+                int height = 2 * getVgap();
+                for (Component child : target.getComponents()) {
+                    if (!child.isVisible()) continue;
+                    Dimension size = child.getPreferredSize();
+                    int gap = rowWidth == 0 ? 0 : getHgap();
+                    if (rowWidth > 0 && rowWidth + gap + size.width > limit) {
+                        width = Math.max(width, rowWidth);
+                        height += rowHeight + getVgap();
+                        rowWidth = 0;
+                        rowHeight = 0;
+                        gap = 0;
+                    }
+                    rowWidth += gap + size.width;
+                    rowHeight = Math.max(rowHeight, size.height);
+                }
+                width = Math.max(width, rowWidth);
+                return new Dimension(
+                        width + insets.left + insets.right + 2 * getHgap(),
+                        height + rowHeight + insets.top + insets.bottom);
+            }
+        }
     }
 
     /**

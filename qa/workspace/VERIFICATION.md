@@ -4,7 +4,7 @@ Date: 2026-10-12. UI branch: `feature/familiar-workspace`, based on the publishe
 Private Evidence checkpoint `efd5ffc70dca073705a43ab82dacc21b42575c57`.
 The UI batch is local and unpushed. Existing test sources were preserved.
 
-## Passed final checks
+## Initial UI batch passed checks (dcae5d5)
 
 | Check | Result |
 | --- | --- |
@@ -19,7 +19,7 @@ The UI batch is local and unpushed. Existing test sources were preserved.
 | Existing disposable CA | Seed and final `rootCa` XML content hashes match; no CA trust or normal profile changes |
 | QA shell syntax and patch whitespace | Passed |
 
-The final tested core JAR SHA-256 is
+The initial UI batch tested core JAR SHA-256 is
 `6a25f8b11f67c58feb387e18e1e4dd229f971274bee227ff25006b7594693e04`.
 It is a core JAR requiring the existing runtime libraries and add-ons, not a
 standalone installer or release.
@@ -50,7 +50,7 @@ they do not establish physical-keyboard or screen-reader usability.
   QA shell quoting errors were corrected before the final runs. Earlier logs
   and failed attempts remain outside Git alongside the successful evidence.
 
-## Remaining limitations and unrun checks
+## Initial review limitations and unrun checks
 
 At 800 pixels, the existing site labels and History columns truncate, and the
 main toolbar extends past the window's right edge. The preset and both message
@@ -94,3 +94,49 @@ Successful evidence is retained locally under `../qa/ui-workspace-final-17-02`,
 review layouts in the same UI implementation and use the same synthetic data.
 Profiles, certificates, databases, vendor reference images, runtime binaries
 and build caches remain outside the repository.
+
+
+## Narrow-window follow-up (2026-10-12)
+
+The reported main-toolbar and History crowding is resolved in the local follow-up.
+The toolbar wraps the original controls onto extra rows instead of clipping or
+hiding them. Its minimum width is the widest indivisible control, and its row
+height estimate includes the panel border. Existing add/remove control APIs and
+listeners remain in use.
+
+History retains the user's enabled columns and order, gives headers readable
+minimum widths and URLs at least 320 logical pixels, and uses the existing
+horizontal scrollbar for metadata that exceeds the viewport. Reset Columns to
+Default reapplies the readable widths. This intentionally trades horizontal
+scrolling for readable fields and applies to the History tab in classic layouts
+as well. No fields are removed or silently hidden by this change.
+
+Final affected checks passed:
+
+- 415 real-desktop assertions across sampled narrow/wide sizes, per-control bounds,
+  add/remove reflow, original instances/order/toggle state, column visibility/order,
+  header widths, full URL/status access, metadata scrolling, selection integrity,
+  default-column reset and a light/dark keyboard focus target.
+- Two existing table-entry regression tests; zero failures/errors/skips.
+- Upstream Java/Kotlin formatting, license/property checks and binary compatibility.
+- Representative 800-pixel light and dark renders inspected; all main-toolbar
+  controls are visible. History screenshots deliberately scroll to URL/status;
+  the horizontal scrollbar exposes the remaining fields.
+- Independent source and light/dark screenshot review found no remaining blocker
+  within the main-toolbar and History scope.
+- Loopback-only QA namespace with zero received/transmitted packets; synthetic
+  records only. Normal profiles, proxy settings and CA trust were untouched.
+
+The follow-up core JAR SHA-256 is
+`ef23684932b6c44b451aa82705995c3a8386a6b98cbb38caccfd6189fbf25f50`.
+Evidence is under `../qa/ui-narrow-final/`, with compilation/regression logs at
+`../qa/ui-narrow-build-02.log` and `../qa/ui-narrow-regression.log`. Use
+`run-narrow-qa.sh` with the same positional inputs as `run-desktop-qa.sh` to repeat
+only the affected desktop checks. The earlier dcae5d5 evidence above is preserved;
+the full 216-test/Java-21/restart batches were not rerun for this follow-up.
+
+An intermediate compile used the wrong column-enum name and was corrected before
+these final checks. Initial visual review also prompted border-aware wrapping,
+minimum sizing and column-reset coverage. Physical keyboard, screen reader,
+high-DPI, other look and feels and other platforms remain unrun. Extremely long
+URLs still require widening their column or using the existing message viewer.

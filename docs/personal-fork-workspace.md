@@ -56,10 +56,25 @@ This batch changes presentation only. Existing message sending, scanners and
 other tools retain upstream behavior. No new attack actions, probing, payloads,
 fuzzing, credential workflows or automation are added.
 
+## Narrow-window follow-up
+
+The main toolbar now wraps intact controls onto extra rows at narrow widths,
+instead of extending beyond the frame. History keeps readable column widths and
+horizontal scrolling while preserving existing visibility/order settings. This
+also applies in classic layouts. The existing column-reset action retains the
+readable sizing. At 800 pixels the full URL and status fields can be viewed
+side by side by scrolling; no enabled metadata field is removed.
+
+This uses a little more toolbar height and horizontal table scrolling. Very long
+URLs still need a wider column or the message viewer. The changes do not alter
+selection, sorting, stored messages or tool actions. The focused follow-up checks
+are recorded separately in the verification file; prior evidence is retained.
+
 ## Bounded follow-up plan
 
 1. Complete this composition/preset batch with offline desktop QA and independent review.
-2. Consider an optional compact history column preset and more discoverable existing filters.
+2. Completed narrow-window control wrapping and readable scrollable History columns.
+   An optional column preset or filter redesign remains a separate proposal.
 3. Refine message-view controls and empty states using the existing HTTP-panel views.
 4. Check translated labels, high-DPI scaling, screen-reader use and other desktop platforms.
 

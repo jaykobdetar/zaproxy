@@ -20,7 +20,9 @@
 package org.parosproxy.paros.extension.history;
 
 import org.parosproxy.paros.Constant;
+import org.zaproxy.zap.utils.DisplayUtils;
 import org.zaproxy.zap.view.table.HistoryReferencesTable;
+import org.zaproxy.zap.view.table.HistoryReferencesTableModel.Column;
 
 /** A {@code HistoryReferencesTable} for History tab. */
 class HistoryTable extends HistoryReferencesTable {
@@ -34,9 +36,31 @@ class HistoryTable extends HistoryReferencesTable {
         setAutoCreateColumnsFromModel(false);
 
         setName("History Table");
+        // Retain every enabled column at a readable width rather than squeezing all metadata
+        // into the viewport. The existing horizontal scrollbar exposes the remaining fields.
+        setAutoResizeMode(AUTO_RESIZE_OFF);
         super.loadColumnConfiguration("HistoryTable");
         if (this.config == null) {
             this.applyDefaultColumnConfigurations();
+        } else {
+            applyReadableColumnWidths();
+        }
+    }
+
+    private void applyReadableColumnWidths() {
+        for (var column : getColumns(true)) {
+            int minimum =
+                    Math.max(
+                            DisplayUtils.getScaledSize(40),
+                            getTableHeader()
+                                            .getFontMetrics(getTableHeader().getFont())
+                                            .stringWidth(column.getHeaderValue().toString())
+                                    + DisplayUtils.getScaledSize(20));
+            if (getModel().getColumnIndex(Column.URL) == column.getModelIndex()) {
+                minimum = Math.max(minimum, DisplayUtils.getScaledSize(320));
+            }
+            column.setMinWidth(Math.max(column.getMinWidth(), minimum));
+            column.setPreferredWidth(Math.max(column.getPreferredWidth(), column.getMinWidth()));
         }
     }
 
@@ -54,6 +78,7 @@ class HistoryTable extends HistoryReferencesTable {
                 .setVisible(false);
         getColumnExt(Constant.messages.getString("view.href.table.header.pathandquery"))
                 .setVisible(false);
+        applyReadableColumnWidths();
     }
 
     /**

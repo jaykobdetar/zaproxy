@@ -10,6 +10,11 @@ import org.parosproxy.paros.extension.AbstractPanel;
 /** QA-only access to the existing detach operation; excluded from production builds. */
 public final class WorkbenchTabQaAccess {
     private WorkbenchTabQaAccess() {}
+    public static void resetColumns(ZapTable table) {
+        new ZapTable.ResetColumnsToDefaultAction(table).actionPerformed(
+                new java.awt.event.ActionEvent(table, java.awt.event.ActionEvent.ACTION_PERFORMED, "reset"));
+    }
+
     public static void pin(TabbedPanel2 pane, AbstractPanel panel, boolean pinned) {
         ((TabbedPanelTab) pane.getTabComponentAt(pane.indexOfComponent(panel))).setPinned(pinned);
         pane.saveTabState(panel);
