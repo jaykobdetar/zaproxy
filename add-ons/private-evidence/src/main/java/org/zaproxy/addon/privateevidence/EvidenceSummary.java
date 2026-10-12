@@ -15,8 +15,6 @@
  */
 package org.zaproxy.addon.privateevidence;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.text.MessageFormat;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -30,6 +28,7 @@ record EvidenceSummary(
         String method,
         String path,
         Integer status,
+        boolean hasResponse,
         int requestBytes,
         int responseBytes,
         String requestMediaType,
@@ -63,8 +62,11 @@ record EvidenceSummary(
         int code = response.getStatusCode();
         return new EvidenceSummary(
                 METHODS.contains(request.getMethod()) ? request.getMethod() : null,
-                request.getURI() == null ? null : pathOnly(request.getURI().toString()),
+                request.getURI() == null || "CONNECT".equalsIgnoreCase(request.getMethod())
+                        ? null
+                        : pathOnly(request.getURI().getEscapedPath()),
                 !response.isEmpty() && code >= 100 && code <= 599 ? code : null,
+                !response.isEmpty(),
                 message.getRequestBody().length(),
                 message.getResponseBody().length(),
                 mediaType(request.getHeader("Content-Type")),
@@ -80,20 +82,11 @@ record EvidenceSummary(
     }
 
     private static String pathOnly(String value) {
-        // Never keep a substring of an oversized/invalid target: it could expose part of a secret.
-        if (value.length() > 8192) {
+        // Read the upstream URI's path component, never reinterpret an authority as a path.
+        if (value == null || value.length() > 1024) {
             return null;
         }
-        try {
-            URI uri = new URI(value);
-            if (uri.isOpaque() || uri.getRawPath() == null) {
-                return null;
-            }
-            String path = uri.getRawPath();
-            return path.length() <= 1024 ? path : null;
-        } catch (URISyntaxException e) {
-            return null;
-        }
+        return value.isEmpty() ? "/" : value.startsWith("/") ? value : null;
     }
 
     Map<String, String> fields(boolean includePaths, ResourceBundle messages) {
@@ -103,7 +96,9 @@ record EvidenceSummary(
         fields.put(text(messages, "document.path"), includePaths && path != null ? path : omitted);
         fields.put(
                 text(messages, "document.status"),
-                status == null ? text(messages, "document.noresponse") : status.toString());
+                status == null
+                        ? hasResponse ? omitted : text(messages, "document.noresponse")
+                        : status.toString());
         fields.put(text(messages, "document.requestbytes"), Integer.toString(requestBytes));
         fields.put(text(messages, "document.responsebytes"), Integer.toString(responseBytes));
         fields.put(

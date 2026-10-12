@@ -59,7 +59,7 @@ class PackagedAddOnTest {
             var hook = new ExtensionHook(null, null);
             extension.hook(hook);
             assertTrue(hook.getProxyListenerList().isEmpty());
-            assertTrue(hook.getSessionListenerList().isEmpty());
+            assertEquals(1, hook.getSessionListenerList().size());
         }
     }
 }

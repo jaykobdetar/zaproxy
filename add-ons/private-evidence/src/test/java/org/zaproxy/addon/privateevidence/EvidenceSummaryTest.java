@@ -132,6 +132,27 @@ class EvidenceSummaryTest {
     }
 
     @Test
+    void connectAuthoritiesNeverBecomeDisclosedPaths() throws Exception {
+        for (String authority : List.of("private-host.invalid", "private-host.invalid:443")) {
+            HttpMessage source = new HttpMessage();
+            source.setRequestHeader("CONNECT " + authority + " HTTP/1.1\r\n\r\n");
+            var summary = EvidenceSummary.capture(source);
+            assertNull(summary.path());
+            assertFalse(summary.render(1, true, MESSAGES).contains("private-host"));
+        }
+    }
+
+    @Test
+    void unrecognisedResponseStatusIsOmittedRatherThanReportedAbsent() throws Exception {
+        var summary = EvidenceSummary.capture(message("https://example.invalid/", 799, ""));
+        assertNull(summary.status());
+        assertTrue(summary.hasResponse());
+        String output = summary.render(1, false, MESSAGES);
+        assertTrue(output.contains("Response status: [omitted]"));
+        assertFalse(output.contains("[no response]"));
+    }
+
+    @Test
     void snapshotsDoNotChangeWhenOriginalMessagesAreEditedLater() throws Exception {
         var source = message("https://example.invalid/", 200, "first");
         var snapshot = EvidenceSummary.capture(source);

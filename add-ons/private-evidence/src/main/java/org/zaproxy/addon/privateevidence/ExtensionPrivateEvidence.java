@@ -19,22 +19,29 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.io.File;
 import java.nio.file.FileAlreadyExistsException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingWorker;
 import org.parosproxy.paros.Constant;
+import org.parosproxy.paros.control.Control.Mode;
 import org.parosproxy.paros.extension.ExtensionAdaptor;
 import org.parosproxy.paros.extension.ExtensionHook;
+import org.parosproxy.paros.extension.SessionChangedListener;
+import org.parosproxy.paros.model.Session;
 import org.parosproxy.paros.network.HttpMessage;
+import org.zaproxy.zap.view.messagecontainer.http.HttpMessageContainer;
 import org.zaproxy.zap.view.popup.PopupMenuItemHttpMessageContainer;
 
 /** Reads only existing messages. Registers no proxy, scanner, sender, or API hooks. */
-public final class ExtensionPrivateEvidence extends ExtensionAdaptor {
+public final class ExtensionPrivateEvidence extends ExtensionAdaptor
+        implements SessionChangedListener {
     static final int MAX_MESSAGES = 100;
+    private final CaptureGuard captureGuard = new CaptureGuard();
 
     public ExtensionPrivateEvidence() {
         super("ExtensionPrivateEvidence");
@@ -53,10 +60,27 @@ public final class ExtensionPrivateEvidence extends ExtensionAdaptor {
     @Override
     public void hook(ExtensionHook hook) {
         super.hook(hook);
+        hook.addSessionListener(this);
         if (hasView()) {
             hook.getHookMenu().addPopupMenuItem(new ReviewMenu());
         }
     }
+
+    @Override
+    public void sessionAboutToChange(Session session) {
+        captureGuard.beforeSessionChange();
+    }
+
+    @Override
+    public void sessionChanged(Session session) {
+        captureGuard.afterSessionChange();
+    }
+
+    @Override
+    public void sessionScopeChanged(Session session) {}
+
+    @Override
+    public void sessionModeChanged(Mode mode) {}
 
     private String text(String suffix) {
         return EvidenceSummary.text(getMessages(), suffix);
@@ -102,20 +126,29 @@ public final class ExtensionPrivateEvidence extends ExtensionAdaptor {
                 save.setEnabled(true);
                 try {
                     get();
-                    getView().showMessageDialog(text("save.success"));
+                    if (dialog.isShowing()) {
+                        JOptionPane.showMessageDialog(
+                                dialog,
+                                text("save.success"),
+                                text("name"),
+                                JOptionPane.INFORMATION_MESSAGE);
+                    }
                 } catch (Exception e) {
                     String key =
                             e.getCause() instanceof FileAlreadyExistsException
                                     ? "save.exists"
                                     : "error";
-                    getView().showWarningDialog(text(key));
+                    if (dialog.isShowing()) {
+                        JOptionPane.showMessageDialog(
+                                dialog, text(key), text("name"), JOptionPane.WARNING_MESSAGE);
+                    }
                 }
             }
         }.execute();
     }
 
     @SuppressWarnings("serial")
-    private final class ReviewMenu extends PopupMenuItemHttpMessageContainer {
+    final class ReviewMenu extends PopupMenuItemHttpMessageContainer {
         private boolean preparing;
 
         ReviewMenu() {
@@ -130,7 +163,15 @@ public final class ExtensionPrivateEvidence extends ExtensionAdaptor {
 
         @Override
         protected boolean isButtonEnabledForNumberOfSelectedMessages(int count) {
-            return !preparing && count > 0 && count <= MAX_MESSAGES;
+            boolean changing = captureGuard.isChanging();
+            setToolTipText(text(changing ? "popup.sessionchanging" : "popup.tooltip"));
+            return !preparing && !changing && count > 0 && count <= MAX_MESSAGES;
+        }
+
+        @Override
+        protected boolean isButtonEnabledForSelectedMessages(HttpMessageContainer container) {
+            // Selection-count validation above needs no message/body retrieval on the EDT.
+            return true;
         }
 
         @Override
@@ -138,24 +179,28 @@ public final class ExtensionPrivateEvidence extends ExtensionAdaptor {
             if (preparing || messages.isEmpty() || messages.size() > MAX_MESSAGES) {
                 return;
             }
+            var token = captureGuard.begin();
+            if (token.isEmpty()) {
+                return;
+            }
             preparing = true;
             new SwingWorker<List<EvidenceSummary>, Void>() {
                 @Override
                 protected List<EvidenceSummary> doInBackground() {
-                    List<EvidenceSummary> summaries = new ArrayList<>(messages.size());
-                    for (HttpMessage message : messages) {
-                        summaries.add(EvidenceSummary.capture(message));
-                    }
-                    return List.copyOf(summaries);
+                    return captureGuard.capture(messages, token.getAsLong());
                 }
 
                 @Override
                 protected void done() {
                     preparing = false;
                     try {
-                        showEvidence(get());
+                        var summaries = get();
+                        captureGuard.publishIfCurrent(
+                                token.getAsLong(), () -> showEvidence(summaries));
                     } catch (Exception e) {
-                        getView().showWarningDialog(text("error"));
+                        if (!(e.getCause() instanceof CancellationException)) {
+                            getView().showWarningDialog(text("error"));
+                        }
                     }
                 }
             }.execute();

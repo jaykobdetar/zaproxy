@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "org.zaproxy.addon"
-version = "0.1.0"
+version = "0.1.1"
 description = "Preview, compare, and export private summaries of existing HTTP messages."
 
 repositories {
@@ -77,6 +77,7 @@ tasks.named("check") {
 
 spotless {
     java {
+        target("src/**/*.java", "qa/**/*.java")
         googleJavaFormat("1.24.0").aosp()
     }
     kotlinGradle {
