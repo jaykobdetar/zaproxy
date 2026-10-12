@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "org.zaproxy.addon"
-version = "0.1.1"
+version = "0.1.2"
 description = "Preview, compare, and export private summaries of existing HTTP messages."
 
 repositories {

@@ -10,18 +10,20 @@ qa_base="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 qa_runtime="$(realpath -- "$1")"
 qa_jdk="$(realpath -- "$2")"
 qa_out="$(realpath -m -- "$3")"
-qa_addon="$qa_base/../build/zapAddOn/bin/privateevidence-alpha-0.1.1.zap"
+qa_addon="${PRIVATE_EVIDENCE_QA_ADDON:-$qa_base/../build/zapAddOn/bin/privateevidence-alpha-0.1.2.zap}"
 
 [[ -x "$qa_jdk/bin/javac" && -x "$qa_jdk/bin/java" && -f "$qa_addon" ]]
-[[ -f "$qa_runtime/zap-2.17.0.jar" ]]
+qa_runtime_jars=("$qa_runtime"/zap-*.jar)
+[[ ${#qa_runtime_jars[@]} == 1 && -f "${qa_runtime_jars[0]}" ]]
+qa_runtime_jar="${qa_runtime_jars[0]}"
 if [[ -e "$qa_out" || -L "$qa_out" ]]; then
     printf '%s\n' "Choose a new output directory; existing QA data is preserved." >&2
     exit 1
 fi
 for qa_plugin in "$qa_runtime"/plugin/*.zap; do
     case "$(basename -- "$qa_plugin")" in
-        network-*.zap|callhome-*.zap) ;;
-        *) printf '%s\n' "Use a disposable runtime with only Network and Call Home add-ons." >&2; exit 1 ;;
+        network-*.zap|callhome-*.zap|privateevidence-*.zap) ;;
+        *) printf '%s\n' "Use a disposable runtime with only Network, Call Home and optional Private Evidence add-ons." >&2; exit 1 ;;
     esac
 done
 for qa_command in unshare xvfb-run ip timeout; do
@@ -30,8 +32,14 @@ done
 
 mkdir -m 700 -- "$qa_out"
 mkdir -p -- "$qa_out/classes" "$qa_out/profile/plugin" "$qa_out/results"
-cp -- "$qa_addon" "$qa_out/profile/plugin/"
-qa_classpath="$qa_out/classes:$qa_runtime/zap-2.17.0.jar:$qa_runtime/lib/*"
+qa_bundled_private=("$qa_runtime"/plugin/privateevidence-*.zap)
+if [[ -f "${qa_bundled_private[0]}" ]]; then
+    [[ ${#qa_bundled_private[@]} == 1 ]]
+    cmp -s -- "$qa_addon" "${qa_bundled_private[0]}"
+else
+    cp -- "$qa_addon" "$qa_out/profile/plugin/"
+fi
+qa_classpath="$qa_out/classes:$qa_runtime_jar:$qa_runtime/lib/*"
 "$qa_jdk/bin/javac" -J-Xmx192m -cp "$qa_classpath" -d "$qa_out/classes" "$qa_base/DesktopQa.java"
 
 unshare -Urn bash -c '

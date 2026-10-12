@@ -102,6 +102,10 @@ class ReviewMenuTest {
                     assertTrue(menu.isEnableForMessageContainer(container));
                     assertTrue(menu.isEnabled());
                     menu.dismissed(null);
+                    assertTrue(menu.isEnableForMessageContainer(container));
+                    extension.sessionAboutToChange(null);
+                    extension.sessionChanged(null);
+                    menu.performActions(lazy);
                 });
         assertEquals(0, reads.get());
     }

@@ -468,6 +468,44 @@ public class DesktopQa {
                     new HistoryReference(
                             Model.getSingleton().getSession(), HistoryReference.TYPE_MANUAL, left);
             var oldReference = new HistoryReference(savedA.getHistoryId());
+            var staleReads = new java.util.concurrent.atomic.AtomicInteger();
+            var staleSelection =
+                    new org.zaproxy.zap.view.messagecontainer.http.PersistedHttpMessagesList(
+                            List.of(oldReference)) {
+                        @Override
+                        public HttpMessage get(int index) {
+                            staleReads.incrementAndGet();
+                            return super.get(index);
+                        }
+                    };
+            var staleMenu = (PopupMenuItemHttpMessageContainer) menu(List.of(left));
+            hidePopup();
+            var staleContainer =
+                    new DefaultSelectableHttpMessagesContainer("Synthetic QA", fixturePanel) {
+                        @Override
+                        public List<HttpMessage> getSelectedMessages() {
+                            return staleSelection;
+                        }
+
+                        @Override
+                        public int getNumberOfSelectedMessages() {
+                            return 1;
+                        }
+
+                        @Override
+                        public boolean hasSelectedMessages() {
+                            return true;
+                        }
+                    };
+            edt(
+                    () -> {
+                        staleMenu.isEnableForMessageContainer(staleContainer);
+                        return null;
+                    });
+            check(
+                    edt(staleMenu::isEnabled),
+                    "Stored popup selection enables before session change");
+            check(staleReads.get() == 0, "Popup selection remains lazy before activation");
             Control.getSingleton()
                     .runCommandLineNewSession(RESULTS.resolve("session-b.session").toString());
             var savedB =
@@ -479,6 +517,18 @@ public class DesktopQa {
             check(
                     oldReference.getHttpMessage().getResponseHeader().getStatusCode() == 404,
                     "Old lazy reference reads replacement-session row: capture needs session-change guard");
+            edt(
+                    () -> {
+                        staleMenu.doClick();
+                        return null;
+                    });
+            Thread.sleep(750);
+            check(
+                    staleReads.get() == 0,
+                    "Stale popup activation rejects stored reads after session change");
+            check(
+                    dialog("Private Evidence") == null,
+                    "Stale popup publishes no replacement-session summary");
             var malformed = new HttpMessage();
             malformed.setRequestHeader("CONNECT private-host.invalid HTTP/1.1\r\n\r\n");
             malformed.setResponseHeader("HTTP/1.1 799 Unrecognised\r\n\r\n");

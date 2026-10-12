@@ -20,6 +20,7 @@ import java.awt.FlowLayout;
 import java.io.File;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.concurrent.CancellationException;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -150,6 +151,7 @@ public final class ExtensionPrivateEvidence extends ExtensionAdaptor
     @SuppressWarnings("serial")
     final class ReviewMenu extends PopupMenuItemHttpMessageContainer {
         private boolean preparing;
+        private OptionalLong selectionToken = OptionalLong.empty();
 
         ReviewMenu() {
             super(text("popup"), true);
@@ -171,7 +173,8 @@ public final class ExtensionPrivateEvidence extends ExtensionAdaptor
         @Override
         protected boolean isButtonEnabledForSelectedMessages(HttpMessageContainer container) {
             // Selection-count validation above needs no message/body retrieval on the EDT.
-            return true;
+            selectionToken = captureGuard.begin();
+            return selectionToken.isPresent();
         }
 
         @Override
@@ -179,8 +182,8 @@ public final class ExtensionPrivateEvidence extends ExtensionAdaptor
             if (preparing || messages.isEmpty() || messages.size() > MAX_MESSAGES) {
                 return;
             }
-            var token = captureGuard.begin();
-            if (token.isEmpty()) {
+            var token = selectionToken;
+            if (token.isEmpty() || !token.equals(captureGuard.begin())) {
                 return;
             }
             preparing = true;
