@@ -1,5 +1,93 @@
 # Verification record — 2026-10-12
 
+## Current result: 0.1.1
+
+- **23 unit/workflow tests and 1 package smoke test passed:** no failures,
+  errors or skips. Formatting, compilation and packaging passed with the same
+  bounded offline Gradle command below.
+- **40 actual desktop checks passed** in official ZAP 2.17.0 with the packaged
+  add-on, driven programmatically through the visible Swing UI on Xvfb.
+- Current archive: `build/zapAddOn/bin/privateevidence-alpha-0.1.1.zap`.
+  Size **26,606 bytes**; SHA-256
+  `4fd18ac342260455b7cadc179dd0214f8ac78ed448734feebdd6913acbfc4f80`.
+- The official runtime archive matched SHA-256
+  `94c8f767b1c2e94f0db66b3ae56514d5e3f5a728ee1b6c798e0c8fe2d61fbff0`.
+  Only mandatory Network/Call Home add-ons and Private Evidence were loaded.
+- Desktop checks covered package/menu/translation loading in the app; preview
+  omissions; path opt-in and CONNECT authorities; search/comparison; absent vs.
+  unrecognized statuses; canceled/repeated export and exact saved bytes; close/
+  reopen defaults; the 100-message cap; Private Evidence's own lazy enablement;
+  stored reads off the UI thread; real session changes and failed-save recovery.
+- Final run completed in about 11 seconds with a 640 MiB heap. Build and runtime
+  jobs ran serially, with roughly 9 GiB host memory available.
+
+The preserved optional Linux desktop harness is `qa/DesktopQa.java` and
+`qa/run-desktop-qa.sh`. Final local evidence is in
+`/home/jaykob/Documents/Codex/2026-10-12/task/qa/final-desktop/`, including
+`runtime.log`, the namespace inventory and `results/desktop-checks.txt`.
+The namespace had only loopback; API, update checks and proxy settings were
+disabled in the disposable profile, and silent mode prevented unsolicited
+requests. The harness sent no HTTP requests. Profile, Java home/preferences,
+virtual display and saved sessions were task-local. ZAP generated a normal
+profile-local root CA; it was never installed in a browser or system trust store.
+
+## Independent review and follow-up
+
+A separate read-only reviewer inspected the privacy/UI batch without edits or
+builds. It identified three confirmed issues:
+
+1. Generic reparsing could treat a CONNECT authority without a port as a path.
+   Fixed by using the upstream path component and omitting CONNECT paths.
+2. The inherited enablement check iterated lazy stored messages on the EDT.
+   Private Evidence now validates count without retrieving bodies. Other
+   unchanged upstream handlers can still load messages when the overall context
+   menu is opened; this fix makes no claim about their behavior.
+3. Unknown three-digit response statuses were labeled as absent responses.
+   A separate response-present flag now distinguishes omitted status from an
+   actually absent response.
+
+The review's session-reference concern was initially unverified. Desktop QA
+confirmed that IDs are reused across two saved synthetic sessions and an old
+reference reads replacement-session data. A subsequent controlled third-session
+switch during a blocked lazy read confirmed that CaptureGuard discards the
+in-flight batch, displays no stale dialog, and permits a fresh private review.
+Four focused guard tests also verify capture/publication invalidation, fresh
+tickets and missing-record failure.
+
+The follow-up review found no additional concrete lock/race/privacy issue, but
+identified unmatched completion events after failed session operations. The
+add-on deliberately remains closed in that case and provides explicit recovery
+guidance. Desktop QA produced an ordinary Save Session error using a synthetic
+path whose parent was a regular file, then successfully saved to a valid new
+path and verified that review was restored. Automatic recovery after every
+possible failed open/save is not claimed; a timeout reset is not used.
+
+## Additional resolved attempts and remaining limits
+
+- Early desktop harness attempts observed the main frame before Control/menu
+  initialization completed. Waiting for the registered menu corrected the QA
+  readiness assumption. A notification selector was updated for ZAP's
+  JTextComponent-based labels.
+- A parented-notification change initially used overloads absent from
+  ViewDelegate and failed compilation; it now uses parented standard Swing
+  dialogs. The final compile and desktop notification/retry checks pass.
+- An early lazy-fixture test invoked every upstream context-menu handler and
+  blocked an unrelated unchanged handler. The packaged Private Evidence item
+  is tested separately for its lazy enablement and capture behavior.
+- Early network namespaces with loopback down produced expected local network
+  initialization warnings. The final harness supplies isolated loopback and
+  has no external interface. No target contact occurred.
+- **Unrun:** Windows/macOS desktop QA; actual screen-reader and high-DPI checks;
+  physical keyboard/window-manager interaction; failed-open recovery variants;
+  full upstream core/distribution suite. The 1280x900 synthetic UI screenshot
+  was visually inspected; its labels, fields and buttons were readable without
+  clipping. The desktop checks use Swing actions, not physical input.
+- Filesystem/export privacy limits documented below still apply. A failed
+  session operation requires a subsequent successful session operation before
+  new evidence review is enabled.
+
+## Initial 0.1.0 result (superseded)
+
 ## Passed
 
 - Fork creation and follow-up GitHub read: `jaykobdetar/zaproxy` is a fork of
@@ -63,7 +151,7 @@ messages and local files only. No target requests or scanner runs occurred.
    the translated action label; the final test checks Enter, Find Next and
    comparison-tab selection and passes.
 
-## Unrun checks and limits
+## Initial unrun checks and limits
 
 - Full upstream core suite and distribution builds: core was not modified, and
   the standalone add-on is built/tested independently.

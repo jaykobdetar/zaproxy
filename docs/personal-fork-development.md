@@ -105,3 +105,24 @@ Use the add-on's README for reproducible commands. Record successful, failed
 and unrun checks separately; a packaged alpha add-on is not a fully validated
 cross-platform release. Do not invent test results or treat an unrun full core
 suite as passing.
+
+## Completed follow-on reliability batch
+
+Real ZAP desktop verification of the packaged add-on passed 40 checks using
+synthetic traffic and disposable sessions, in a network namespace with only
+loopback. An independent review identified and prompted fixes for CONNECT
+authority/path disclosure, UI-thread lazy loading by this add-on's enablement
+check, and absent/unrecognized status confusion.
+
+The next project-reliability gap was verified rather than assumed: saved
+sessions reuse history row IDs, and an old uncached HistoryReference can retrieve
+the replacement session's row. Private Evidence now listens for session
+transitions, rejects capture begun during a transition, checks a revision around
+each lazy read, and discards stale publication. The normal ZAP session format
+and upstream runtime code remain unchanged.
+
+Failed session operations can omit the upstream completion notification.
+Review stays closed and supplies recovery guidance; a subsequent successful
+session save restored review in the disposable runtime test. No heuristic
+timeout/reset is used. See the add-on's VERIFICATION.md for the independent
+review record, resolved failed attempts, package hash and remaining QA limits.
