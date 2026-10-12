@@ -23,7 +23,7 @@
 
 The preserved optional Linux desktop harness is `qa/DesktopQa.java` and
 `qa/run-desktop-qa.sh`. Final local evidence is in
-`/home/jaykob/Documents/Codex/2026-10-12/task/qa/final-desktop/`, including
+`/home/jaykob/Documents/Codex/2026-10-12/task/qa/final-desktop-render/`, including
 `runtime.log`, the namespace inventory and `results/desktop-checks.txt`.
 The namespace had only loopback; API, update checks and proxy settings were
 disabled in the disposable profile, and silent mode prevented unsolicited
@@ -79,9 +79,11 @@ possible failed open/save is not claimed; a timeout reset is not used.
   has no external interface. No target contact occurred.
 - **Unrun:** Windows/macOS desktop QA; actual screen-reader and high-DPI checks;
   physical keyboard/window-manager interaction; failed-open recovery variants;
-  full upstream core/distribution suite. The 1280x900 synthetic UI screenshot
-  was visually inspected; its labels, fields and buttons were readable without
-  clipping. The desktop checks use Swing actions, not physical input.
+  full upstream core/distribution suite. The packed synthetic UI panel was
+  rendered in the running app and visually inspected; its labels, fields and
+  buttons were readable without clipping. Native Xvfb root capture was
+  inconsistent without a window manager, so the harness records the actual
+  Swing panel render. The desktop checks use Swing actions, not physical input.
 - Filesystem/export privacy limits documented below still apply. A failed
   session operation requires a subsequent successful session operation before
   new evidence review is enabled.

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.nio.file.*;
 import java.util.*;
 import java.util.List;
@@ -436,9 +437,20 @@ public class DesktopQa {
                     });
             Thread.sleep(150);
             ImageIO.write(
-                    new Robot().createScreenCapture(new Rectangle(0, 0, 1280, 900)),
+                    edt(
+                            () -> {
+                                BufferedImage image =
+                                        new BufferedImage(
+                                                review.getWidth(),
+                                                review.getHeight(),
+                                                BufferedImage.TYPE_INT_RGB);
+                                Graphics graphics = image.getGraphics();
+                                review.printAll(graphics);
+                                graphics.dispose();
+                                return image;
+                            }),
                     "png",
-                    RESULTS.resolve("private-evidence-ui.png").toFile());
+                    RESULTS.resolve("private-evidence-panel.png").toFile());
             close(review);
             check(dialog("Private Evidence") == null, "Close disposes review dialog");
             var reopened = review(List.of(left));
