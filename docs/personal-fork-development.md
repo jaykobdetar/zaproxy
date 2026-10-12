@@ -165,7 +165,7 @@ source/doc verification, rather than claiming an exhaustive marketplace audit.
 | Offline request/response inspection | Existing foundation retained | Core HTTP panels, History and Search |
 | Literal search and accessible controls | Implemented | Explicit literal mode, named query, labeled inverse control and compact results bar |
 | Full traffic comparison | Existing add-on retained | Official Diff add-on; no replacement comparison engine |
-| Private summary comparison/search/export | Implemented | Private Evidence 0.1.1, exact preview and new-file output, 100-message cap |
+| Private summary comparison/search/export | Implemented | Private Evidence 0.1.2, exact preview and new-file output, 100-message cap |
 | Project/session persistence and snapshots | Existing foundation retained | Core Session and HSQLDB; no new database/file format |
 | Session transition provenance/recovery | Implemented for Private Evidence | Verified stale stored references are rejected; successful-save recovery verified after a failed operation |
 | Standard report templates/import/export | Existing add-ons retained | Reports and Import/Export source reviewed; private summaries supplement them |
@@ -187,3 +187,18 @@ passed.
 Use [the setup and handoff guide](personal-fork-setup.md) for the local branch,
 artifacts, reproducible bounded checks and the distinction between the remote
 fork and unpushed implementation.
+
+## Final readiness checkpoint
+
+Private Evidence 0.1.2 supersedes 0.1.1 after final review found a cached-popup
+provenance gap. Selection revision is now bound during enablement and checked
+before activation. The corrected synthetic fixture fails against 0.1.1 and
+passes against 0.1.2. Existing tests were extended only for that verified gap.
+
+A runnable local snapshot and standalone add-on are ready. Java 17 and 21 each
+passed upstream assembly/check with 431 explicitly selected offline tests,
+formatting and binary compatibility. The extracted final archive passed both
+existing desktop harnesses (22 Search and 44 Private Evidence checks). This
+qualifies the bounded safe paths, not the full unfiltered upstream CI matrix or
+a platform-certified installer. [The final report](personal-fork-verification.md)
+records the immutable runtime-code commit, exact hashes and remaining limits.

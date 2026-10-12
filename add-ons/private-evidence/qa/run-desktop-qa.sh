@@ -22,8 +22,8 @@ if [[ -e "$qa_out" || -L "$qa_out" ]]; then
 fi
 for qa_plugin in "$qa_runtime"/plugin/*.zap; do
     case "$(basename -- "$qa_plugin")" in
-        network-*.zap|callhome-*.zap|privateevidence-*.zap) ;;
-        *) printf '%s\n' "Use a disposable runtime with only Network, Call Home and optional Private Evidence add-ons." >&2; exit 1 ;;
+        network-*.zap|callhome-*.zap|commonlib-*.zap|privateevidence-*.zap) ;;
+        *) printf '%s\n' "Use a disposable runtime with only Network, Call Home, optional Common Library and Private Evidence add-ons." >&2; exit 1 ;;
     esac
 done
 for qa_command in unshare xvfb-run ip timeout; do

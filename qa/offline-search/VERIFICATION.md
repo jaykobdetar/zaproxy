@@ -82,7 +82,7 @@ qualification is claimed.
 Earlier failed QA directories/logs are retained outside the checkout. Final
 passed results supersede those attempts; failures are not counted as passed.
 
-## Unrun and limits
+## Initial unrun checks and limits (see final checkpoint below)
 
 - Full upstream test suite, GUI suite, API transport suite, binary-compatibility
   task, distribution/installer build and normal user installation.
@@ -113,3 +113,21 @@ refuses an existing output directory. Use only a disposable copied runtime with
 the two mandatory add-ons and a disposable QA seed configuration; never supply
 an existing personal installation/profile. Initial runtime/JDK/dependencies
 were verified/prepared earlier and are outside Git.
+
+## Final broader regression and runnable bundle
+
+Source-code commit `42eb75c0f7b88783182a1324b4bd80866c67e6c3` also received
+upstream `assemble`/`check` on full task-local JDK17 and21. Both runs passed the
+same 431 selected offline cases with zero failures/errors/skips, formatting,
+license/property checks and `japicmp`. The full unfiltered core suite remains
+unrun. The selected filters cover Search, HTTP panels, model/session, view and
+utility tests; scanner/crawler/target-traffic tests are excluded.
+
+The final personal distribution includes exact libraries, Private Evidence
+0.1.2 and unchanged pinned Network/Call Home/Common Library packages. The
+existing Search harness passed 22 checks against the exact extracted archive;
+the Private Evidence harness passed 44 checks there. Common Library resolves
+the earlier missing-provider fixture error; final startup has no ERROR message.
+The packaged upstream launcher reports `2.18.0-SNAPSHOT` in a version-only
+isolated smoke run. See [the final report](../../docs/personal-fork-verification.md)
+for source/artifact hashes, evidence and limits.

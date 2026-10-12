@@ -1,6 +1,29 @@
 # Verification record — 2026-10-12
 
-## Current result: 0.1.1
+## Current result: 0.1.2
+
+- **23 unit/workflow tests and 1 package smoke test passed**, with zero failures,
+  errors or skips. Final formatting/package checks passed; valid up-to-date unit
+  results were reused after QA-only changes.
+- **44 desktop checks passed** in isolated official ZAP 2.17.0, including four
+  checks for a popup retained across a session transition. The final independent
+  review found no remaining correctness blocker in the requested areas.
+- Size **26,703 bytes**; SHA-256
+  `04d1fb20a8e364af0db0bd0e0e80d0559da98b94398f7d53c777f54912b15d22`.
+- An additional review found that 0.1.1 obtained its revision at activation, after
+  the popup had cached its selection. A session change before activation could
+  therefore give an old lazy selection a new token. Version 0.1.2 captures the
+  revision during enablement, rejects stale activation before stored reads, and
+  carries that token through preparation/publication.
+- The corrected lazy fixture failed against retained 0.1.1 and passed against
+  0.1.2. An earlier fixture incorrectly used a constructor that copied the list;
+  that attempt is inconclusive and preserved separately. The existing menu test
+  was extended for this verified coverage gap; no unrelated tests were added.
+- Evidence is under `../qa/release-checks/private-evidence-012-final-desktop/`
+  relative to the fork root. Cross-platform build and combined-runtime checks
+  are recorded in [the final fork verification](../../docs/personal-fork-verification.md).
+
+## Prior result: 0.1.1 (superseded)
 
 - **23 unit/workflow tests and 1 package smoke test passed:** no failures,
   errors or skips. Formatting, compilation and packaging passed with the same

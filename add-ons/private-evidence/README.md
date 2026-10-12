@@ -43,7 +43,9 @@ Private Evidence's menu enablement does not retrieve stored message bodies.
 Other upstream context-menu handlers may still retrieve messages; this add-on
 does not change them. A batch whose session changes while lazy records are being
 read is discarded before publication. Already completed summaries remain
-independent snapshots.
+independent snapshots. A popup selection carries the revision from when it was
+opened; activating it after a session change is rejected before stored reads.
+Close and reopen the popup to capture a fresh selection.
 
 If ZAP reports a failed session save/open, it can leave its session-completion
 notification unmatched. Evidence review stays disabled to protect provenance.
@@ -67,18 +69,22 @@ the core, other add-ons, or distributions. Its Gradle JVM is capped at 512 MiB
 and metaspace at 256 MiB; tests use one 192 MiB JVM. Initial dependency downloads
 need network access; cached test/build work can run offline.
 
-The output is `build/zapAddOn/bin/privateevidence-alpha-0.1.1.zap` (inspect the build
+The output is `build/zapAddOn/bin/privateevidence-alpha-0.1.2.zap` (inspect the build
 output for the authoritative path). ZAP 2.17.0+ is required. Install manually
 through ZAP's Manage Add-ons dialog and restart ZAP after installing or removing
-this alpha add-on. It is not bundled or installed automatically. Tests only use
+this alpha add-on. The standalone package is not installed automatically. The personal snapshot
+bundles it; stock ZAP does not. Tests only use
 synthetic messages and local files, and run headlessly.
 
 ## Disposable desktop verification
 
-The Linux-only optional harness in `qa/` starts the actual ZAP 2.17.0 app with
+The Linux-only optional harness in `qa/` starts the actual ZAP 2.17.0 app or the local personal build with
 the packaged add-on and synthetic messages. It requires a verified official
 runtime copied into a disposable directory, with only the mandatory Network and
-Call Home add-ons left in its plugin directory. Preserve unused add-ons elsewhere
+Call Home add-ons left in its plugin directory. Common Library is allowed
+for the metadata provider. The personal build can also
+contain the exact matching Private Evidence package; the harness verifies its
+bytes rather than installing a duplicate. Preserve unused add-ons elsewhere
 in that disposable copy; never change an existing user installation.
 
 Provide a full JDK 17+, `unshare`, `ip`, `xvfb-run`, and a new output directory:

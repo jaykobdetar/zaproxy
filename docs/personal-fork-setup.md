@@ -13,11 +13,11 @@ FE8's checkout and paused work were left untouched.
 
 ## What to try
 
-**Private Evidence 0.1.1** is a standalone alpha add-on for ZAP 2.17.0+.
+**Private Evidence 0.1.2** is a standalone alpha add-on for ZAP 2.17.0+.
 The ready local package is
-`../outputs/privateevidence-alpha-0.1.1.zap` relative to this checkout. Its
+`../outputs/privateevidence-alpha-0.1.2.zap` relative to this checkout. Its
 SHA-256 is
-`4fd18ac342260455b7cadc179dd0214f8ac78ed448734feebdd6913acbfc4f80`.
+`04d1fb20a8e364af0db0bd0e0e80d0559da98b94398f7d53c777f54912b15d22`.
 
 For a manual trial, use a separate ZAP profile and install the local `.zap`
 package through Manage Add-ons, then restart. The official
@@ -41,9 +41,36 @@ does not send requests.
 The built core is `zap/build/libs/zap-2.18.0-SNAPSHOT.jar`; exact cached runtime
 dependencies are in `zap/build/offlineSearchQa/lib`. The JAR is a development
 artifact, not an add-on or a complete installer. Do not put it in an add-on
-plugin directory. A normal desktop distribution build/install remains unrun.
-The preserved Linux harness starts this exact core with disposable synthetic
+plugin directory. A runnable personal cross-platform archive is prepared in
+`../outputs/ZAP_personal_2.18.0-SNAPSHOT.zip`. It includes the core UI patch,
+Private Evidence 0.1.2, exact runtime libraries, and unchanged Network,
+Call Home and Common Library add-ons. A normal user-profile installation remains unrun.
+The preserved Linux harness starts this core with disposable synthetic
 sessions and the mandatory add-ons from a verified copied official runtime.
+
+## Run the custom build
+
+Extract `ZAP_personal_2.18.0-SNAPSHOT.zip` into a separate directory. On Linux,
+use Java 17+ and a fresh profile; do not reuse a personal production profile:
+
+```bash
+cd ZAP_2.18.0-SNAPSHOT
+bash zap.sh -Xmx640m -silent -dir /absolute/path/to/new-personal-zap-profile \
+  -config view.mode=safe -config api.enabled=false \
+  -config start.checkForUpdates=false -config start.checkAddonUpdates=false \
+  -config start.installAddonUpdates=false \
+  -config 'network.localServers[@version]=1' \
+  -config network.localServers.mainProxy.enabled=false
+```
+
+These settings apply to that new profile. No browser/system CA trust installation
+is needed for offline viewing. The archive includes README-personal.md,
+BUILD-METADATA.json, the upstream license/notice and third-party licenses. The
+standalone `.zap` installs only Private Evidence; core Literal Search requires
+this custom build or a source build.
+
+See [the final verification report](personal-fork-verification.md) for the code
+commit, Java 17/21 check results, exact archive hashes and remaining limits.
 
 ## Reproduce the bounded checks
 
