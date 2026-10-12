@@ -28,7 +28,7 @@ targets Java 17, although the workstation also has Java 21.
 
 | Guide area | Existing implementation verified | Decision |
 | --- | --- | --- |
-| Request/response viewing and search | Core Request/Response views and `extension/search` | Reuse; no replacement editor |
+| Request/response viewing and search | Core Request/Response views and `extension/search`; default search compiles every query as a regex | Reuse views; add an explicit literal-text option to the existing Search tab |
 | Offline comparison | [Diff add-on](https://www.zaproxy.org/docs/desktop/addons/diff/) | Reuse for full messages; add only summary comparison in the private review workflow |
 | Sessions/projects | `org.parosproxy.paros.model.Session` provides open, persistence and snapshots; HSQLDB dependency | No new session format; investigate a concrete recovery problem before altering storage |
 | Export | [Import/Export](https://www.zaproxy.org/docs/desktop/addons/import-export/) supports raw, XML, HAR and text exports | Existing `PopupMenuSaveRawMessage`, `PopupMenuExportMessages`, and HAR exporter write traffic; a private summary preview is a narrow, useful addition |
@@ -126,3 +126,64 @@ Review stays closed and supplies recovery guidance; a subsequent successful
 session save restored review in the disposable runtime test. No heuristic
 timeout/reset is used. See the add-on's VERIFICATION.md for the independent
 review record, resolved failed attempts, package hash and remaining QA limits.
+
+## Completed offline search and accessibility batch
+
+The official [Search tab documentation](https://www.zaproxy.org/docs/desktop/ui/tabs/search/)
+describes regex queries. At the pinned core commit, `SearchPanel.doSearch`
+compiles the user's text directly as a regex, and `SearchThread` and result
+highlighting use that regex. Searching literal punctuation therefore requires
+manual escaping. A plain-text option is a concrete gap in the existing offline
+viewer, unlike most of the reference guide's already implemented foundations.
+
+The core Search tab now has a **Literal** checkbox, off by default. It quotes
+the complete query with `Pattern.quote`, including embedded `\\E`, and uses the
+existing stored-history engine. Empty literal queries show a warning without
+clearing results. Whitespace is significant. Matching retains the engine's
+existing A-Z case folding; it does not add non-ASCII case folding. Programmatic
+searches that populate the toolbar restore regex mode; API contracts and engine
+flags are unchanged.
+
+The query has an accessible name and the inverse label identifies its control.
+The new checkbox remains focusable under ZAP's toolbar look and feel. Result
+navigation, counts/status and export/options now occupy a separate bottom bar,
+preventing the clipping found during narrow-window desktop QA. Existing actions
+and component instances are reused. This small core-owned view change avoids
+an add-on reaching into another extension's private Swing controls.
+
+See [offline-search verification](../qa/offline-search/VERIFICATION.md) for the
+focused tests, desktop evidence, resolved failures and remaining platform limits.
+The Private Evidence add-on still works independently on stock ZAP 2.17.0+.
+
+## Reference roadmap disposition
+
+This is the completion matrix for the bounded safe iteration. It records scoped
+source/doc verification, rather than claiming an exhaustive marketplace audit.
+
+| Guide area | Current disposition | Evidence or next condition |
+| --- | --- | --- |
+| Offline request/response inspection | Existing foundation retained | Core HTTP panels, History and Search |
+| Literal search and accessible controls | Implemented | Explicit literal mode, named query, labeled inverse control and compact results bar |
+| Full traffic comparison | Existing add-on retained | Official Diff add-on; no replacement comparison engine |
+| Private summary comparison/search/export | Implemented | Private Evidence 0.1.1, exact preview and new-file output, 100-message cap |
+| Project/session persistence and snapshots | Existing foundation retained | Core Session and HSQLDB; no new database/file format |
+| Session transition provenance/recovery | Implemented for Private Evidence | Verified stale stored references are rejected; successful-save recovery verified after a failed operation |
+| Standard report templates/import/export | Existing add-ons retained | Reports and Import/Export source reviewed; private summaries supplement them |
+| UI framework and plugin architecture | Existing foundation retained | Swing/ExtensionAdaptor/public message-menu hooks; no core rewrite |
+| Passive analysis of supplied traffic | Existing foundation retained | Official passive scanner/rules; no concrete new rule defect established by this guide |
+| Performance and reliability | Bounded work implemented | Background capture/export, bounded reviews, session invalidation; no claim of large-traffic performance profiling |
+| Session encryption and shared workspaces | Deferred safe design work | Needs specific data, compatibility and recovery requirements; not inferred to be missing from all extensions |
+| Platform/accessibility qualification | Partly verified, partly unrun | Linux Swing runtime checked; physical keyboard, screen-reader, high-DPI, other OSes/themes still need QA |
+| Active probes, exploit payloads, credential attacks, fuzzing, OAST and offensive automation | Excluded | Outside the authorized implementation scope; no target contact or scanner execution |
+
+The guide does not establish another distinct high-value safe gap at the reviewed
+source pins. The next useful work is platform/usability qualification, or a
+specific supplied-traffic/session case that demonstrates a defect. Additional
+fields, formats, collaboration or storage changes need concrete requirements
+before expanding this alpha workflow. Existing tests and valid evidence are
+preserved; the full upstream suite and normal installation are not claimed as
+passed.
+
+Use [the setup and handoff guide](personal-fork-setup.md) for the local branch,
+artifacts, reproducible bounded checks and the distinction between the remote
+fork and unpushed implementation.

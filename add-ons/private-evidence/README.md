@@ -1,8 +1,9 @@
 # Private Evidence (alpha)
 
 A small offline review add-on for this personal ZAP fork. It uses ZAP's existing
-HTTP message context menu and the official add-on packaging plugin. No core
-runtime code is changed.
+HTTP message context menu and the official add-on packaging plugin. The add-on
+requires no core patches. The fork's separate literal-search UI change is
+documented in the development guide.
 
 Select 1–100 existing messages in History (or another supported message view),
 then choose **Review Private Evidence...**. Review the summary, optionally enable
